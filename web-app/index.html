@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Thrift Space</title>
+        <link rel="stylesheet" href="css/style.css" />
+    </head>
+
+    <body>
+        <!--Landing Page-->
+        <section id="landing" class="landing-container">
+            <h1 class="main-title">Welcome to Thrift Space</h1>
+            <p>A community app for thrift events, markets & local vendors</p>
+            <form id="signupForm">
+                <div class="form-group">
+                    <label for="signupName">Name: </label>
+                    <input type="text" id="signupName" maxlength="30" required />
+                </div>
+
+                <div class="form-group">
+                    <label for="signupEmail">Email: </label>
+                    <input type="email" id="signupEmail" required />
+                </div>
+
+                <div class="form-group">
+                    <label for="signupPassword">Password: </label>
+                    <input type="password" id="signupPassword" required />
+                </div>
+
+                <button type="submit">Sign Up</button>
+            </form>
+            <p>Already have an account? <a href="#" id="toLogin">Log In</a></p>
+        </section>
+
+        <!--Login-->
+        <section id="login-section" style="display: none;">
+            <h2>Log In</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="loginName">Name: </label>
+                    <input type="text" id="loginName" maxlength="30" required />                    
+                </div>
+                
+                <div class="form-group">
+                    <label for="loginEmail">Email: </label>
+                    <input type="email" id="loginEmail" required />                    
+                </div>
+
+                <div class="form-group">
+                    <label for="loginPassword">Password: </label>
+                    <input type="password" id="loginPassword" required />                    
+                </div>
+
+                <button type="submit">Login</button>
+            </form>
+            <p>Don't have an account? <a href="#" id="toSignup">Sign Up</a></p>
+        </section>
+
+        <!--Dashboard-->
+        <section id="user-dashboard" style="display: none;">
+            <h2>Welcome to your Dashboard</h2>
+            <div id="dashboardContent"></div>
+            <button id="logoutBtn">Log Out</button>
+        </section>
+
+        <script src="js/main.js"></script>
+    </body>
+</html>
