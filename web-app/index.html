@@ -9,9 +9,29 @@
 
     <body>
         <!--Landing Page-->
-        <section id="landing" class="landing-container">
-            <h1 class="main-title">Welcome to Thrift Space</h1>
-            <p>A community app for thrift events, markets & local vendors</p>
+        <!--Intro message-->
+        <section id="landing-intro" class="landing-container">
+            <div class="intro-content">
+                <h1 class="intro-title">Welcome to Thrift Space</h1>
+                <p class="intro-subtitle">A community app for thrift events, markets & local vendors</p>
+                <button class="retro-button">Continue</button>
+            </div>
+        </section>
+        <!--check profile-->
+        <section id="choose-auth" class="landing-container" style="display:none;">
+            <div class="intro-content">
+                <h2>Join the Community!</h2>
+                <p>Would you like to sign up or log in?</p>
+                <div class="auth-buttons">
+                    <button id="goToSignup" class="retro-button">Sign Up</button>
+                    <button id="goToLogin" class="retro-button">Log In</button>
+                </div>
+            </div>
+        </section>
+        <!--sign up-->
+        <section id="signup-section" class="landing-container" style="display: none;">
+            <div class="title-bar">Sign Up</div>
+
             <form id="signupForm">
                 <div class="form-group">
                     <label for="signupName">Name: </label>
@@ -28,20 +48,24 @@
                     <input type="password" id="signupPassword" required />
                 </div>
 
-                <button type="submit">Sign Up</button>
+                <div class="form-group">
+                    <label for="signupRole">I'm a: </label>
+                    <select id="signupRole" required>
+                        <option value="">Select a Role</option>
+                        <option value="shopper">Shopper</option>
+                        <option value="vendor/organizer">Vendor/Organizer</option>
+                    </select>
+                </div>
+
+                <button class="retro-button">Sign Up</button>
             </form>
             <p>Already have an account? <a href="#" id="toLogin">Log In</a></p>
         </section>
+        <!--log in-->
+        <section id="login-section" class ="landing-container" style="display: none;">
+            <div class="title-bar">Login</div>
 
-        <!--Login-->
-        <section id="login-section" style="display: none;">
-            <h2>Log In</h2>
-            <form id="loginForm">
-                <div class="form-group">
-                    <label for="loginName">Name: </label>
-                    <input type="text" id="loginName" maxlength="30" required />                    
-                </div>
-                
+            <form id="loginForm">                
                 <div class="form-group">
                     <label for="loginEmail">Email: </label>
                     <input type="email" id="loginEmail" required />                    
@@ -52,18 +76,54 @@
                     <input type="password" id="loginPassword" required />                    
                 </div>
 
-                <button type="submit">Login</button>
+                <button type="submit" class="retro-button">Login</button>
             </form>
+
             <p>Don't have an account? <a href="#" id="toSignup">Sign Up</a></p>
         </section>
 
-        <!--Dashboard-->
+        <!--main hub/dashboard-->
         <section id="user-dashboard" style="display: none;">
-            <h2>Welcome to your Dashboard</h2>
-            <div id="dashboardContent"></div>
-            <button id="logoutBtn">Log Out</button>
+            <div class="dashboard-header">
+                <h2 id="welcomeMessage"></h2>
+                <button id="userProfileBtn" class="retro-button small">User Profile</button>
+            </div>
+
+            <nav class="dashboard-tabs">
+                <button class="retro-button tab-button active" data-tab="events">Events</button>
+                <button class="retro-button tab-button" data-tab="bulletin">Bulletin</button>
+                <button class="retro-button tab-button" data-tab="profiles">Followed Profiles</button>
+            </nav>
+            <div id="dashboardContent" class="dashboard-content"></div>
+            <button id="logoutBtn" class="retro-button">Log Out</button>
         </section>
+        
+        <!--user profile panel-->
+        <template id="shopperDashboardTemplate">
+            <div class="role-dashboard">
+                <div class="shopper-section">
+                    <h3>Your Saved Events</h3>
+                    <div id="savedEventsList" class="dashboard-list">
+                        <p>No events saved yet.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="shopper-section">
+                <h3>Vendors You Follow</h3>
+                <div id="followedVendorsList" class="dashboard-list">
+                    <p>You're not following anyone yet</p>
+                </div>
+            </div>
+            <div class="shopper-section">
+                <h3>Bulletin Highlights</h3>
+                <div id="bulletinUpdates" class="dashbaord-bulletin">
+                    <p>No recent posts.</p>
+                </div>
+            </div>
+        </template>
+
 
         <script src="js/main.js"></script>
+        <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     </body>
 </html>

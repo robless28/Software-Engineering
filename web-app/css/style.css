@@ -1,20 +1,80 @@
+
+/*base styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: #FAEDCA;
+  color: #333;
+  line-height: 1.6;
+  padding: 25px;
+}
+
 .landing-container {
-  font-family: 'Georgia', serif;
+    width: 400px;
+    margin: 50px auto;
+    padding: 16px;
+    background-color: #d4d0c8; /* Windows 95 window color */
+    border: 2px solid #fff;
+    border-top-color: #fff;
+    border-left-color: #fff;
+    border-right-color: #404040;
+    border-bottom-color: #404040;
+    box-shadow: inset -1px -1px 0 #000, inset 1px 1px 0 #808080;
+}
+.auth-buttons {
+  display: flex;
+  gap: 0i want tpx;
+  justify-content: center;
+  margin-top: 20px;
+}
+button.retro-button {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #d4d0c8;
+    color: black;
+    padding: 4px 12px;
+    border: 2px solid #fff;
+    border-top-color: #fff;
+    border-left-color: #fff;
+    border-right-color: #404040;
+    border-bottom-color: #404040;
+    box-shadow: inset -1px -1px 0 #000, inset 1px 1px 0 #808080;
+    cursor: pointer;
+    outline: none;
+    display: block;
+    margin: 10px auto 0 auto;
+}
 
-  display: grid;
-  justify-content: center; 
-  align-items: stretch;
-  padding: 40px;
+/* Pressed-in effect on click */
+button.retro-button:active {
+    border-top-color: #404040;
+    border-left-color: #404040;
+    border-right-color: #fff;
+    border-bottom-color: #fff;
+    box-shadow: inset 1px 1px 0 #000, inset -1px -1px 0 #808080;
 }
-.login-container {
-  font-family: 'Georgia', serif;
 
-  display: grid;
-  justify-content: center; 
-  align-items: stretch;
+.title-bar {
+    background-color: #000080; /* Classic blue */
+    color: white;
+    font-weight: bold;
+    font-size: 14px;
+    text-align: center;
+    margin: -16px -16px 20px -16px;
+    font-family: 'Press Start 2P';
 }
-.main-title {
-  font-size: 3rem;
-  font-weight: bold;
-  text-align: center;
+select#signupRole {
+  border-radius: 4px;
+  font-size: 14px;
+  border: 1px solid #8a8886;
+  background-color: #ffffff;
+  color: #323130;
+  font-family: 'Times New Roman', Times, serif;
+  appearance: auto;
+
 }
+
+/* role design*/

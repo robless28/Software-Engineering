@@ -1,8 +1,17 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const landing = document.getElementById("landing");
+  const landingIntro = document.getElementById("landing-intro");
+  const continueBtn = document.querySelector("#landing-intro .retro-button");
+
+  const chooseAuth = document.getElementById("choose-auth");
+  const goToSignup = document.getElementById("goToSignup");
+  const goToLogin = document.getElementById("goToLogin");
+
+  const signupSection = document.getElementById("signup-section");
   const signupForm = document.getElementById("signupForm");
+
   const loginSection = document.getElementById("login-section");
   const loginForm = document.getElementById("loginForm");
+
   const dashboard = document.getElementById("user-dashboard");
   const dashboardContent = document.getElementById("dashboardContent");
   const logoutBtn = document.getElementById("logoutBtn");
@@ -10,7 +19,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const toLogin = document.getElementById("toLogin");
   const toSignup = document.getElementById("toSignup");
 
-  // Hide everything except landing by default
+  // Initial visibility
+  chooseAuth.style.display = "none";
+  signupSection.style.display = "none";
   loginSection.style.display = "none";
   dashboard.style.display = "none";
 
@@ -20,42 +31,55 @@ document.addEventListener("DOMContentLoaded", () => {
     showDashboard(existingUser);
   }
 
-  // Navigation
+  // Continue → show auth options
+  continueBtn?.addEventListener("click", () => {
+    landingIntro.style.display = "none";
+    chooseAuth.style.display = "block";
+  });
+
+  // Auth choice navigation
+  goToSignup?.addEventListener("click", () => {
+    chooseAuth.style.display = "none";
+    signupSection.style.display = "block";
+  });
+
+  goToLogin?.addEventListener("click", () => {
+    chooseAuth.style.display = "none";
+    loginSection.style.display = "block";
+  });
+
   toLogin?.addEventListener("click", (e) => {
     e.preventDefault();
-    landing.style.display = "none";
+    signupSection.style.display = "none";
     loginSection.style.display = "block";
   });
 
   toSignup?.addEventListener("click", (e) => {
     e.preventDefault();
     loginSection.style.display = "none";
-    landing.style.display = "block";
+    signupSection.style.display = "block";
   });
 
-  // Handle signup
+  // Signup
   signupForm.addEventListener("submit", (e) => {
     e.preventDefault();
-
     const name = document.getElementById("signupName").value.trim();
     const email = document.getElementById("signupEmail").value.trim();
     const password = document.getElementById("signupPassword").value;
+    const role = document.getElementById("signupRole").value;
 
-    const user = { name, email, password };
-
+    const user = { name, email, password, role };
     localStorage.setItem("userProfile", JSON.stringify(user));
     alert("Sign-up successful! Please log in.");
     signupForm.reset();
 
-    landing.style.display = "none";
+    signupSection.style.display = "none";
     loginSection.style.display = "block";
   });
 
-  // Handle login
+  // Login
   loginForm.addEventListener("submit", (e) => {
     e.preventDefault();
-
-    const loginName = document.getElementById("loginName").value.trim();
     const loginEmail = document.getElementById("loginEmail").value.trim();
     const loginPassword = document.getElementById("loginPassword").value;
 
@@ -63,7 +87,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (
       storedUser &&
-      storedUser.name === loginName &&
       storedUser.email === loginEmail &&
       storedUser.password === loginPassword
     ) {
@@ -74,20 +97,43 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Handle logout
+  // Logout
   logoutBtn.addEventListener("click", () => {
     localStorage.removeItem("userProfile");
     alert("Logged out successfully.");
-    location.reload();
+
+    dashboard.style.display = "none";
+    landingIntro.style.display = "block";
+
+    dashboardContent.innerHTML = "";
+    document.querySelectorAll(".tab-button").forEach(btn => btn.classList.remove("active"));
   });
 
-  function showDashboard(user) {
-    landing.style.display = "none";
+  // Show Dashboard
+    function showDashboard(user) {
+    landingIntro.style.display = "none";
+    chooseAuth.style.display = "none";
+    signupSection.style.display = "none";
     loginSection.style.display = "none";
     dashboard.style.display = "block";
-    dashboardContent.innerHTML = `
-      <p><strong>Name:</strong> ${user.name}</p>
-      <p><strong>Email:</strong> ${user.email}</p>
-    `;
+    const welcomeText = `Welcome back, ${user.name}!`;
+    document.getElementById("welcomeMessage").textContent = welcomeText;
+
+    // Shopper-specific content
+    if (user.role === "shopper") {
+      const template = document.getElementById("shopperDashboardTemplate");
+      const clone = template.content.cloneNode(true);
+      dashboardContent.innerHTML = ""; // clear first
+      dashboardContent.appendChild(clone);
+    } else {
+      // Fallback for vendor/organizer or other roles
+      dashboardContent.innerHTML = `
+        <p><strong>Name:</strong> ${user.name}</p>
+        <p><strong>Email:</strong> ${user.email}</p>
+        <p><strong>Role:</strong> ${user.role}</p>
+        <p>This dashboard is under construction for your role.</p>
+      `;
+    }
   }
-});
+}
+);
