@@ -1,8 +1,9 @@
 body {
-  font-family: 'Press Start 2P', cursive;
+  font-family: 'Nunito', 'Poppins', system-ui, sans-serif;
   margin: 0;
-  background: #f5f5dc;
-  color: #222;
+  background: #FCFCFA; /* cream/off-white */
+  color: #1F2937;
+  line-height: 1.5;
 }
 
 /* Landing / Auth */
@@ -12,22 +13,23 @@ body {
   align-items: center;
   height: 100vh;
   text-align: center;
-  background: #f5f5dc;
+  background: #faf9f6;
 }
 
-.retro-button {
-  font-family: 'Press Start 2P', cursive;
-  background: #222;
-  color: #fff;
-  border: 3px solid #fff;
-  padding: 10px 20px;
+.button {
+  font-family: 'Poppins', sans-serif;
+  background: #fff;
+  color: #1F2937;
+  border: 1px solid #222;
+  padding: 12px 24px;
   margin: 5px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
+  font-size: 14px;
 }
-.retro-button:hover {
-  background: #fff;
-  color: #222;
+.button:hover {
+  background: #222;
+  color: #fff;
 }
 
 /* App Layout */
@@ -37,15 +39,17 @@ body {
 }
 .sidebar {
   width: 220px;
-  background: #222;
-  color: #fff;
+  background: #111;
+  color: #fdfdfd;
   display: flex;
   flex-direction: column;
   padding: 20px 10px;
+  font-size: 14px;
 }
 .sidebar-header h2 {
-  font-size: 14px;
+  font-size: 16px;
   margin-bottom: 20px;
+  font-weight: normal;
 }
 .sidebar-nav {
   display: flex;
@@ -53,6 +57,16 @@ body {
 }
 .sidebar-btn {
   margin: 5px 0;
+  background: transparent;
+  border: none;
+  color: inherit;
+  text-align: left;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-family: "Times New Roman", Times, serif;
+}
+.sidebar-btn:hover {
+  background: rgba(255,255,255,0.1);
 }
 .notification-bell {
   margin-top: auto;
@@ -63,8 +77,10 @@ body {
 /* Main content */
 .main-content {
   flex: 1;
-  padding: 20px;
+  padding: 30px;
   overflow-y: auto;
+  background: #fff;
+  border-left: 1px solid #ccc;
 }
 
 /* Profile */
@@ -79,31 +95,50 @@ body {
 .profile-pic-container img {
   width: 120px;
   height: 120px;
-  border: 3px solid #222;
+  border: 2px solid #222;
 }
 .profile-info {
   margin-left: 20px;
+  font-size: 14px;
 }
 .posts-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill,minmax(100px,1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 15px;
 }
 .posts-grid div {
   width: 100%;
   padding-bottom: 100%;
   background-size: cover;
   background-position: center;
-  border: 2px solid #222;
+  border: 1px solid #ccc;
 }
 #calendarGrid {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 8px;
 }
 
 #calendarGrid > div {
   display: flex;
   flex-wrap: wrap;
-  gap: 3px;
+  gap: 6px;
 }
+.profile-edit {
+  background: #fff; border: 1px solid #ddd; padding: 16px; border-radius: 2px;
+}
+.form-row { display: grid; gap: 6px; margin-bottom: 12px; }
+.form-row label { font-size: 13px; color: #333; }
+.profile-edit input, .profile-edit textarea {
+  font-family: "Times New Roman", Times, serif;
+  border: 1px solid #ccc; padding: 8px; font-size: 14px; background: #fff;
+}
+.profile-edit input:focus, .profile-edit textarea:focus {
+  outline: none; border-color: #222; box-shadow: 0 0 0 2px rgba(0,0,0,0.05);
+}
+.pic-input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pic-preview img {
+  width: 120px; height: 120px; object-fit: cover;
+  border: 1px solid #222; background: #fff; margin-top: 8px;
+}
+.profile-edit-actions { display: flex; gap: 10px; }
