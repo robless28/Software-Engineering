@@ -96,3 +96,14 @@ body {
   background-position: center;
   border: 2px solid #222;
 }
+#calendarGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+#calendarGrid > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
