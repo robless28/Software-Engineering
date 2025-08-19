@@ -1,0 +1,17 @@
+{
+  "name": "my-thrifting-app",
+  "version": "1.0.0",
+  "main": "main.js",
+  "homepage": ".",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "electron ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "electron": "^37.3.1"
+  }
+}
