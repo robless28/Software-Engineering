@@ -114,7 +114,19 @@ body {
   flex-direction: column;
   gap: 8px;
 }
-
+/* FullCalendar tweaks */
+.fc .fc-daygrid-event {
+  border-radius: 8px;
+  padding: 2px 6px;
+}
+.fc-type-badge {
+  font-size: 10px;
+  opacity: 0.75;
+  margin-left: 6px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+}
 #calendarGrid > div {
   display: flex;
   flex-wrap: wrap;
