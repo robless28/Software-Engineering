@@ -63,8 +63,10 @@
         </div>
 
         <div id="newBulletinFormContainer" class="card" hidden>
-          <h3>Create Bulletin Post</h3>
+          <h3 id="bulletinFormTitle">Create Bulletin Post</h3>
           <form id="newBulletinForm">
+            <input type="hidden" id="editingPostId" />
+
             <div class="form-row">
               <label for="bulletinType">Type</label>
               <select id="bulletinType" required>
@@ -80,14 +82,21 @@
               <input type="text" id="bulletinTitleInput" name="title" placeholder="Title" required />
               <textarea id="bulletinBody" name="content" placeholder="Content" required></textarea>
             </div>
+
             <div class="form-row">
               <input type="date" id="bulletinDate" required />
               <input type="time" id="bulletinTime" required />
             </div>
+
             <div class="form-row">
               <input type="file" id="bulletinImage" accept="image/*" />
             </div>
-            <button class="button">Post Bulletin</button>
+            
+            <div class="form-row">
+              <button id="bulletinSubmitButton" class="button" type="submit">Post Bulletin</button>
+              <button id="cancelBulletinButton" type="button" class="button">Cancel</button>
+            </div>
+
           </form>
         </div>
 
