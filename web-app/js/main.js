@@ -344,8 +344,9 @@ function cleanupSavedOrphans() {
     const type  = (bulletinType && bulletinType.value) ? bulletinType.value : guessType(title);
     
     const eventDT = new Date(`${date}T${time}`);
-    if (isNaN(eventDT) || eventDT < new Date()) {
-      alert('Please select a valid future date and time.');
+
+    if (isNaN(eventDT)) {
+      alert('Please select a valid date and time.');
       return;
     }
 
@@ -454,35 +455,85 @@ function cleanupSavedOrphans() {
   }
 
   function openNewBulletinForm() {
-  if (!newBulletinFormContainer) return;
-  newBulletinForm.reset();
-  newBulletinFormContainer.removeAttribute('hidden');
-  toggleNewPostBtn?.setAttribute('aria-expanded', 'true');
-  if (toggleNewPostBtn) toggleNewPostBtn.textContent = 'Close';
-  (bulletinTitle || newBulletinForm.querySelector('input,textarea,select'))?.focus();
-}
+    if (!newBulletinFormContainer || !newBulletinForm) return;
+    if (newBulletinForm.dataset.mode !== 'edit') newBulletinForm.reset();
+    newBulletinFormContainer.removeAttribute('hidden');
+    toggleNewPostBtn?.setAttribute('aria-expanded', 'true');
+    updateToggleButtonLabel();
+    (bulletinTitle || newBulletinForm.querySelector('input,textarea,select'))?.focus();
+  }
 
-function closeNewBulletinForm() {
-  if (!newBulletinFormContainer) return;
-  newBulletinForm.reset();
-  newBulletinFormContainer.setAttribute('hidden', '');
-  toggleNewPostBtn?.setAttribute('aria-expanded', 'false');
-  if (toggleNewPostBtn) toggleNewPostBtn.textContent = 'New Post';
-}
+  function setBulletinFormMode(mode, post = null) {
+    if (!newBulletinForm) return;
 
-function toggleNewBulletin() {
-  if (newBulletinFormContainer?.hasAttribute('hidden')) openNewBulletinForm();
-  else closeNewBulletinForm();
-}
-// Toggle open/close New Post card
-if (toggleNewPostBtn && newBulletinFormContainer) {
-  toggleNewPostBtn.setAttribute('aria-expanded', 'false');
-  toggleNewPostBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-    toggleNewBulletin();
-  });
-}
-closeNewBulletinForm();
+    newBulletinForm.dataset.mode = mode;
+    openNewBulletinForm(); // open first
+
+    if (mode === 'edit' && post) {
+      bulletinFormTitle.textContent = 'Edit Bulletin Post';
+      bulletinSubmitButton.textContent = 'Update Post';
+      editingPostId.value = post.id;
+
+      bulletinTitle.value = post.title;
+      bulletinBody.value = post.body;
+      bulletinDate.value = post.date;
+      bulletinTime.value = post.time;
+      bulletinType.value = ['market','swap','sale','event'].includes(post.type) ? post.type : 'event';
+    } else {
+      bulletinFormTitle.textContent = 'Create Bulletin Post';
+      bulletinSubmitButton.textContent = 'Post Bulletin';
+      editingPostId.value = '';
+      newBulletinForm.reset();
+    }
+    updateToggleButtonLabel();
+  }
+
+  function closeNewBulletinForm() {
+    if (!newBulletinFormContainer || !newBulletinForm) return;
+    newBulletinForm.reset();
+    newBulletinFormContainer.setAttribute('hidden', '');
+    toggleNewPostBtn?.setAttribute('aria-expanded', 'false');
+    updateToggleButtonLabel();
+  }
+
+  function isEditMode() {
+    return newBulletinForm?.dataset.mode === 'edit'; 
+  }
+
+  function updateToggleButtonLabel() { 
+    if (!toggleNewPostBtn) return;
+    const hidden = newBulletinFormContainer?.hasAttribute('hidden');
+    if (isEditMode()) {
+      toggleNewPostBtn.textContent = 'Cancel Edit';
+      toggleNewPostBtn.setAttribute('aria-label', 'Cancel editing this post');
+      return;
+    }
+    toggleNewPostBtn.textContent = hidden ? 'New Post' : 'Close';
+    toggleNewPostBtn.setAttribute('aria-label', hidden ? 'Open new post form' : 'Close new post form');
+  }
+
+  function toggleNewBulletin() {
+    if (!newBulletinForm || !newBulletinFormContainer) return;
+
+    //cancel edit mode: switch to create mode
+    if (isEditMode()) {
+      setBulletinFormMode('create');
+      newBulletinFormContainer.removeAttribute('hidden');
+      toggleNewPostBtn?.setAttribute('aria-expanded', 'true');
+      updateToggleButtonLabel();
+      bulletinTitle?.focus();
+      return;
+    }
+
+    //create mode: open or close
+    const willOpen = newBulletinFormContainer.hasAttribute('hidden');
+    if (willOpen) {
+      openNewBulletinForm();
+    } else {
+      closeNewBulletinForm();
+    }
+    updateToggleButtonLabel();
+  }
 
 
   // -------- CALENDAR --------
@@ -493,21 +544,21 @@ function postsToEvents(filter = 'all') {
   const savedOnly = !!calendarSavedOnly?.checked;
   const savedSet = new Set(getSavedIds());
 
-  return posts
-    .filter((p) => filter === 'all' || (p.type || 'event') === filter) // fixed
-    .filter((p) => !savedOnly || savedSet.has(p.id))
-    .map((p) => ({
-      id: p.id,
-      title: p.title,
-      start: p.date + (p.time ? `T${p.time}` : ''),
-      allDay: !p.time,
-      extendedProps: {
-        body: p.body || '',
-        image: p.image || '',
-        type: p.type || 'event',
-      },
-    }));
-}
+    return posts
+      .filter((p) => filter === 'all' || (p.type || 'event') === filter)
+      .filter((p) => !savedOnly || savedSet.has(p.id))
+      .map((p) => ({
+        id: p.id,
+        title: p.title,
+        start: `${p.date}T${p.time}`,
+        allDay: false,
+        extendedProps: {
+          body : p.body  || '',
+          image: p.image || '',
+          type : p.type  || 'event',
+        },
+      }));
+  }
 
 function renderFullCalendar() {
   const mount = document.getElementById('calendarGrid');
@@ -713,9 +764,9 @@ function refreshCalendarIfReady() {
     const today = new Date().toISOString().split('T')[0];
     const dateInput = document.getElementById('bulletinDate');
     if (dateInput) dateInput.min = today;
-    
-    // Default view: Dashboard
-    showView('dashboardView');
+
+    showView('dashboardView'); // default
+    updateToggleButtonLabel();
   }
 
   // Kick it off
