@@ -29,6 +29,16 @@
 * { box-sizing: border-box; }
 
 html, body {
+.button-outline, #toggleNewBulletinForm, #refreshBulletinButton {
+  background: transparent;
+  color: var(--accent);
+  border: 2px solid var(--accent);
+  box-shadow: none;
+}
+.button-outline:hover, #toggleNewBulletinForm:hover, #refreshBulletinButton:hover {
+  background: var(--accent-100);
+  color: var(--accent);
+}
   height: 100%;
 }
 
@@ -64,11 +74,16 @@ a:hover { text-decoration: underline; }
    Layout
 =========================== */
 #app-container {
+  margin-left: 240px;
   display: flex;
   height: 100vh;
 }
 
 .sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100vh;
   width: 240px;
   background: var(--sidebar-bg);
   color: var(--sidebar-fg);
@@ -76,10 +91,11 @@ a:hover { text-decoration: underline; }
   flex-direction: column;
   padding: 20px 12px;
   font-size: 14px;
+  z-index: 100;
 }
 
 .sidebar-header { padding: 8px 8px 16px; }
-.app-title { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: .2px; }
+.app-title { margin: 0; font-size: 25px; font-weight: 700; letter-spacing: .2px; }
 
 .sidebar-nav {
   display: flex; flex-direction: column; gap: 4px;
@@ -95,6 +111,7 @@ a:hover { text-decoration: underline; }
   padding: 10px 12px;
   cursor: pointer;
   font: inherit;
+  font-size: 16px;
   border-radius: var(--radius-sm);
   transition: background-color .15s ease, transform .05s ease;
 }
@@ -143,8 +160,27 @@ a:hover { text-decoration: underline; }
   transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
   font-size:14px;
   border-radius: var(--radius-sm);
-}
 .button:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+  background: var(--accent-100);
+  color: var(--accent);
+  border: 1px solid var(--accent-200);
+  padding: 12px 20px 12px 16px;
+  margin: 5px;
+  cursor: pointer;
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+  font-size: 15px;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 2px 8px rgba(24,73,169,0.08);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.button:hover {
+  background: var(--accent);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(24,73,169,0.12);
+}
 .button:active { transform: translateY(0); }
 
 .button-outline { background: transparent; }
@@ -226,13 +262,51 @@ input:focus, select:focus, textarea:focus {
   display:flex;
   justify-content:flex-end;
   gap: 8px;
-  margin: 0 0 12px 0;
+  margin-left: auto;
+  margin-bottom: 12px;
+
+
+.bulletin-search {
+  display: flex;
+  align-items: center;
+  margin-right: 12px;
+}
+.search-bar {
+  padding: 18px 12px;
+  font-size: 12px;
+  width: 400px;
+  border: 1.5px solid var(--accent-200);
+  border-radius: 8px;
+  font-size: 15px;
+  background: #fff;
+  color: var(--text);
+  box-shadow: 0 1px 4px rgba(24,73,169,0.06);
+  transition: border-color .15s, box-shadow .15s;
+}
+.search-bar:focus {
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px rgba(24,73,169,0.12);
+  outline: none;
+}
 }
 
-.bulletin-list { display:grid; gap:12px; }
+.bulletin-list { display:grid; gap:14px; }
+
+.bulletin-list .muted {
+  margin-bottom: 12px;
+}
+
+.bulletin-toolbar .toggle {
+  margin-left: auto;
+}
 
 .bulletin-card .thumb{
   width:100%; max-height:240px; object-fit:cover; border-radius:8px;
+}
+
+.bulletin-card p {
+  padding-left: 8px;
+  margin-top: 15px;
 }
 
 .empty {
@@ -245,9 +319,10 @@ input:focus, select:focus, textarea:focus {
 
 /* Badges + “Saved” (Option B) */
 .badge {
-  display:inline-block;
+  display:flex;
   font-size:12px;
-  padding:2px 8px;
+  padding:2px 0px;
+  opacity: 0.5;
   border-radius:999px;
   border:1px solid transparent;
 }
@@ -285,8 +360,8 @@ input:focus, select:focus, textarea:focus {
 /* ===========================
    Header
 =========================== */
-header { padding: 14px 20px; border-bottom: 1px solid var(--border); background: #fff; }
-#welcomeHeading { margin: 0; font-size: 22px; font-weight: 800; }
+header { padding: 2px 0px; border-bottom: 1px solid var(--border); background: #fff; }
+#welcomeHeading { text-align: left; font-size: 22px; font-weight: 800; }
 
 /* ===========================
    Utilities
@@ -294,3 +369,13 @@ header { padding: 14px 20px; border-bottom: 1px solid var(--border); background:
 .muted { color: var(--muted); }
 .center { text-align:center; }
 .right { text-align:right; }
+
+/* Button icons */
+.button .icon {
+  display: inline-block;
+  width: 16px;
+  height: 10px;
+  vertical-align: middle;
+  margin-right: 4px;
+  fill: currentColor;
+}

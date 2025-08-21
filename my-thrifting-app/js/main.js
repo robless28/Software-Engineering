@@ -304,11 +304,14 @@ function cleanupSavedOrphans() {
 
 
   function bulletinCard(p) {
-    const dateStr = new Date(`${p.date}T${p.time || '00:00'}`).toLocaleDateString(undefined, {
-      month: 'short', day: 'numeric', year: 'numeric',
-    });
-    const img = p.image ? `<img class="thumb" src="${p.image}" alt="">` : '';
-    const typeBadge = p.type ? `<span class="badge">${p.type}</span>` : '';
+      const dateStr = new Date(`${p.date}T${p.time || '00:00'}`).toLocaleDateString(undefined, {
+        month: 'short', day: 'numeric', year: 'numeric',
+      });
+      const img = p.image ? `<img class="thumb" src="${p.image}" alt="">` : '';
+      function capitalize(str) {
+        return str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
+      }
+      const typeBadge = p.type ? `<span class="badge">${capitalize(p.type)}</span>` : '';
 
     const saved = isSaved(p.id); // boolean
     const savedBadge = saved ? `<span class="badge saved">Saved</span>` : '';
