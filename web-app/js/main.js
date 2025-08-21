@@ -26,7 +26,7 @@
   const bulletinList = $('#bulletinList');
   const bulletinPostsContainer = $('#bulletinPosts');
   const newBulletinForm = $('#newBulletinForm');
-  const bulletinTitle = $('#bulletinTitle');
+  const bulletinTitle = $('#bulletinTitleInput');
   const bulletinBody = $('#bulletinBody');
   const bulletinDate = $('#bulletinDate');
   const bulletinTime = $('#bulletinTime');
@@ -188,6 +188,7 @@ function cleanupSavedOrphans() {
   function handleNavClick(e) {
     const btn = e.currentTarget;
     const targetView = btn.getAttribute('data-view') || `${btn.id}View`;
+    console.log(`[NAV] Switching to:`, targetView);
     showView(targetView);
   }
 
@@ -575,17 +576,6 @@ function renderFullCalendar() {
   function onEnterCalendarView() {
     renderFullCalendar();
   }
-// If you used my previous nav code, just modify showView:
-const _origShowView = typeof showView === 'function' ? showView : null;
-window.showView = function(viewId) {
-  // call original if it exists
-  if (_origShowView) _origShowView(viewId);
-  else {
-    // minimal fallback visibility toggle
-    document.querySelectorAll('.view').forEach(v => v.hidden = (v.id !== viewId));
-  }
-  if (viewId === 'calendarView') onEnterCalendarView();
-};
 
 // Whenever you add/delete a bulletin post that is an event, refresh calendar:
 function refreshCalendarIfReady() {
@@ -707,6 +697,9 @@ function refreshCalendarIfReady() {
     bindEvents();
     updateNotifications();
     updateHeaderName();
+
+    console.log('[INIT] App loaded');
+
     const today = new Date().toISOString().split('T')[0];
     const dateInput = document.getElementById('bulletinDate');
     if (dateInput) dateInput.min = today;
