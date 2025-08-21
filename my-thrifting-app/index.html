@@ -1,186 +1,163 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Thrift Space</title>
-<link rel="stylesheet" href="css/style.css">
-<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Thrift Space</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link href="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.15/index.global.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.15/index.global.min.css" rel="stylesheet">
+
+  <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.15/index.global.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.15/index.global.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/interaction@6.1.15/index.global.min.js"></script>
+
+  <script src="js/main.js" defer></script>
 </head>
 <body>
+  <header>
+    <h1 id="welcomeHeading">Welcome!</h1>
+  </header>
 
-<!-- Landing / Intro -->
-<section id="landing-intro" class="landing-container">
-  <div class="intro-content">
-    <h1 class="intro-title">Welcome to Thrift Space</h1>
-    <p class="intro-subtitle">A community app for thrift events, markets & local vendors</p>
-    <button id="continueBtn" class="retro-button">Continue</button>
-  </div>
-</section>
-
-<!-- Choose Auth -->
-<section id="choose-auth" class="landing-container" style="display:none;">
-  <div class="intro-content">
-    <h2>Join the Community!</h2>
-    <p>Would you like to sign up or log in?</p>
-    <div class="auth-buttons">
-      <button id="goToSignup" class="retro-button">Sign Up</button>
-      <button id="goToLogin" class="retro-button">Log In</button>
-    </div>
-  </div>
-</section>
-
-<!-- Sign Up -->
-<section id="signup-section" class="landing-container" style="display:none;">
-  <div class="title-bar">Sign Up</div>
-  <form id="signupForm">
-    <div class="form-group">
-      <label for="signupName">Name:</label>
-      <input type="text" id="signupName" maxlength="30" required>
-    </div>
-    <div class="form-group">
-      <label for="signupEmail">Email:</label>
-      <input type="email" id="signupEmail" required>
-    </div>
-    <div class="form-group">
-      <label for="signupPassword">Password:</label>
-      <input type="password" id="signupPassword" required>
-    </div>
-    <div class="form-group">
-      <label for="signupPasswordConfirm">Confirm Password:</label>
-      <input type="password" id="signupPasswordConfirm" required>
-    </div>
-    <div class="form-group">
-      <label for="signupRole">I'm a:</label>
-      <select id="signupRole" required>
-        <option value="">Select a Role</option>
-        <option value="shopper">Shopper</option>
-        <option value="vendor/organizer">Vendor/Organizer</option>
-      </select>
-    </div>
-    <button class="retro-button">Sign Up</button>
-  </form>
-  <p>Already have an account? <a href="#" id="toLogin">Log In</a></p>
-</section>
-
-<!-- Login -->
-<section id="login-section" class="landing-container" style="display:none;">
-  <div class="title-bar">Login</div>
-  <form id="loginForm">
-    <div class="form-group">
-      <label for="loginEmail">Email:</label>
-      <input type="email" id="loginEmail" required>
-    </div>
-    <div class="form-group">
-      <label for="loginPassword">Password:</label>
-      <input type="password" id="loginPassword" required>
-    </div>
-    <button type="submit" class="retro-button">Login</button>
-  </form>
-  <p>Don't have an account? <a href="#" id="toSignup">Sign Up</a></p>
-</section>
-
-<!-- Main App -->
-<div id="app-container" style="display:none;">
-  <!-- Sidebar -->
-  <aside class="sidebar">
-    <div class="sidebar-header">
-      <h2>Thrift Space</h2>
-    </div>
-    <nav class="sidebar-nav">
-      <button class="retro-button sidebar-btn" data-view="dashboard">Dashboard</button>
-      <button class="retro-button sidebar-btn" data-view="bulletin">Bulletin</button>
-      <button class="retro-button sidebar-btn" data-view="calendar">Calendar</button>
-      <button class="retro-button sidebar-btn" data-view="profile">Profile</button>
-      <button id="logoutBtn" class="retro-button sidebar-btn">Log Out</button>
-    </nav>
-    <div class="notification-bell" id="notificationBell">🔔<span id="notifCount">0</span></div>
-  </aside>
-
-  <!-- Main content area -->
-  <main class="main-content">
-    <!-- Dashboard -->
-    <section id="dashboard" class="view-section" style="display:none;">
-      <h2 id="welcomeMessage"></h2>
-      <div id="dashboardContent"></div>
-    </section>
-
-    <!-- Bulletin -->
-    <section id="bulletin" class="view-section" style="display:none;">
-      <h2>Bulletin</h2>
-      <div id="bulletinPosts"></div>
-      <div id="newBulletinFormContainer" style="display:none;">
-        <h3>Create New Event</h3>
-        <form id="newBulletinForm">
-          <input type="text" id="bulletinTitle" placeholder="Event Title" required>
-          <textarea id="bulletinDesc" placeholder="Event Description" required></textarea>
-          <input type="date" id="bulletinDate" required>
-          <input type="text" id="bulletinPic" placeholder="Image URL (optional)">
-          <button class="retro-button">Post Event</button>
-        </form>
+  <!-- Main App -->
+  <div id="app-container">
+    <aside class="sidebar" aria-label="Main Navigation">
+      <div class="sidebar-header">
+        <h1 class="app-title">Thrift Space</h1>
       </div>
-    </section>
+      <nav class="sidebar-nav" aria-label="Views">
+        <button class="sidebar-item" id="dashboard" data-view="dashboardView" aria-controls="dashboardView" aria-selected="true">Dashboard</button>
+        <button class="sidebar-item" id="bulletin" data-view="bulletinView" aria-controls="bulletinView" aria-selected="false">Bulletin</button>
+        <button class="sidebar-item" id="calendar" data-view="calendarView" aria-controls="calendarView" aria-selected="false">Calendar</button>
+        <button class="sidebar-item" id="profile" data-view="profileView" aria-controls="profileView" aria-selected="false">Profile</button>
+      </nav>
+      <div class="notification-bell" id="notificationBell" aria-label="Notifications">
+        <span id="notifCount" aria-live="polite">0</span>
+      </div>
+    </aside>
 
-    <!-- Calendar -->
-    <section id="calendar" class="view-section" style="display:none;">
-      <h2>Event Calendar</h2>
-      <div id="calendarGrid"></div>
-    </section>
+    <!-- Main Content -->
+    <main id="main" class="main-content" role="main">
+      <!-- Dashboard -->
+      <section id="dashboardView" class="view" aria-labelledby="dashboard">
+        <h2>Dashboard</h2>
+        <p>Welcome to your dashboard!</p>
+        <div id="dashboardContent">
+          <p>Loading...</p>
+        </div>
+      </section>
 
-    <!-- Profile -->
-    <section id="profile" class="view-section" style="display:none;">
-      <div class="profile-header">
-        <div class="profile-left">
-          <div class="profile-pic-container">
-            <img id="profilePicDisplay" src="https://via.placeholder.com/120" alt="Profile Picture">
-          </div>
+      <!-- Bulletin Board -->
+      <section id="bulletinView" class="view" aria-labelledby="bulletin" hidden>
+        <h2>Bulletin Board</h2>
+
+        <div class="bulletin-toolbar">
+          <button id="toggleNewBulletinForm" class="button" aria-controls="newBulletinFormContainer">
+            New Post
+          </button>
+          <button id="refreshBulletinButton" class="button">Refresh</button>
+        </div>
+        
+        <div id="bulletinList">
+          <p>Loading...</p>
+        </div>
+
+        <div id="newBulletinFormContainer" class="card" hidden>
+          <h3>Create Bulletin Post</h3>
+          <form id="newBulletinForm">
+            <div class="form-row">
+              <label for="bulletinType">Type</label>
+              <select id="bulletinType" required>
+                <option value="" disabled selected>Select type</option>
+                <option value="market">Market</option>
+                <option value="swap">Swap</option>
+                <option value="sale">Sale</option>
+                <option value="event">Event (other)</option>
+              </select>
+            </div>
+
+            <div class="form-row">
+              <input type="text" id="bulletinTitle" name="title" placeholder="Title" required />
+              <textarea id="bulletinBody" name="content" placeholder="Content" required></textarea>
+            </div>
+            <div class="form-row">
+              <input type="date" id="bulletinDate" required />
+              <input type="time" id="bulletinTime" required />
+            </div>
+            <div class="form-row">
+              <input type="file" id="bulletinImage" accept="image/*" />
+            </div>
+            <button class="button">Post Bulletin</button>
+          </form>
+        </div>
+
+        <label class="toggle">
+          <input type="checkbox" id="filterSavedOnly" />
+          Saved only
+        </label>
+
+        <div id="bulletinPosts" class="bulletin-list" aria-live="polite"></div>
+      </section>
+
+      <!-- Calendar -->
+      <section id="calendarView" class="view" aria-labelledby="calendar" hidden>
+        <h2>Calendar</h2>
+        <div id="calendarContent"></div>
+
+        <div class="calendar-controls">
+          <label for="calendarFilter">Filter:</label>
+          <select id="calendarFilter">
+            <option value="all">All</option>
+            <option value="market">Markets</option>
+            <option value="swap">Swaps</option>
+            <option value="sale">Sales</option>
+          </select>
+        </div>
+        
+        <label class="toggle" style="margin-left: 10px;">
+          <input type="checkbox" id="calendarSavedOnly" />
+          Saved only
+        </label>
+
+        <div id="calendarGrid"></div>
+      </section>
+
+      <!-- Profile -->
+      <section id="profileView" class="view" aria-labelledby="profile" hidden>
+        <h2 id="profileTitle">Profile</h2>
+
+        <div class="profile-card">
+          <img id="profileImage" src="images/default-profile.png" alt="Profile Image" />
           <div class="profile-info">
-            <h2 id="profileNameDisplay">User Name</h2>
-            <p id="profileRoleDisplay">Shopper</p>
+            <p id="profileName">Name</p>
+            <p id="profileEmail">Email</p>
+            <p id="profileBio">Bio</p>
           </div>
+          <button id="editProfileButton" class="button">Edit Profile</button>
         </div>
-        <div class="profile-right">
-          <button id="editProfileBtn" class="retro-button">Edit Profile</button>
-        </div>
-      </div>
 
-      <div id="postsGrid" class="posts-grid"></div>
+        <div id="profileEditFormContainer" class="card" hidden>
+          <h3>Edit Profile</h3>
+          <form id="profileEditForm">
+            <div class="form-row">
+              <input type="text" id="editProfileName" name="name" placeholder="Name" required />
+              <input type="email" id="editProfileEmail" name="email" placeholder="Email" required />
+            </div>
+            <div class="form-row">
+              <textarea id="editProfileBio" name="bio" placeholder="Bio"></textarea>
+            </div>
+            <div class="form-row">
+              <input type="file" id="editProfileImage" accept="image/*" />
+            </div>
+            <div class="profile-edit-actions">
+              <button type="submit" class="button">Save Changes</button>
+              <button type="button" id="cancelEditProfileButton" class="button">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </section>
+    </main>
+  </div>
 
-      <!-- Vendor Edit Form -->
-      <form id="profileForm" style="display:none;">
-        <div class="form-group">
-          <label for="profileName">Name:</label>
-          <input type="text" id="profileName" required>
-        </div>
-        <div class="form-group">
-          <label for="profilePassword">New Password:</label>
-          <input type="password" id="profilePassword" placeholder="Leave blank to keep current password">
-        </div>
-        <div id="vendorFields" style="display:none;">
-          <div class="form-group">
-            <label for="vendorContact">Contact Info:</label>
-            <input type="text" id="vendorContact" placeholder="Phone, email, etc.">
-          </div>
-          <div class="form-group">
-            <label for="vendorSocials">Social Links:</label>
-            <input type="text" id="vendorSocials" placeholder="@instagram, website...">
-          </div>
-          <div class="form-group">
-            <label for="vendorBio">Short Bio:</label>
-            <textarea id="vendorBio" maxlength="200"></textarea>
-          </div>
-          <div class="form-group">
-            <label for="vendorPic">Profile Picture:</label>
-            <input type="file" id="vendorPic" accept="image/*">
-          </div>
-        </div>
-        <button type="submit" class="retro-button">Save Changes</button>
-        <button type="button" id="closeProfile" class="retro-button">Back</button>
-      </form>
-    </section>
-  </main>
-</div>
-
-<script src="js/main.js"></script>
 </body>
 </html>

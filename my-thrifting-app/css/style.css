@@ -1,98 +1,296 @@
+/* ===========================
+   Root + Base
+=========================== */
+:root{
+  --bg: #FCFCFA;
+  --text: #1F2937;
+  --muted: #6B7280;
+  --border: #E5E7EB;
+
+  --sidebar-bg: #111;
+  --sidebar-fg: #FDFDFD;
+
+  /* Option B – calm blue accent for "Saved" */
+  --accent: #1849a9;
+  --accent-50: #f7faff;
+  --accent-100: #e6f0ff;
+  --accent-200: #b7cffb;
+
+  --danger-bg: #fff5f5;
+  --danger-border: #ffb3b3;
+  --danger-text: #b00020;
+
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 1px 2px rgba(0,0,0,.04), 0 6px 24px rgba(0,0,0,.05);
+  --avatar-size: 128px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+}
+
 body {
-  font-family: 'Press Start 2P', cursive;
   margin: 0;
-  background: #f5f5dc;
-  color: #222;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  font-family: 'Nunito','Poppins',system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,sans-serif;
 }
 
-/* Landing / Auth */
+img { max-width: 100%; display: block; }
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+[hidden]{ display: none !important; }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ===========================
+   Landing (optional)
+=========================== */
 .landing-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  text-align: center;
-  background: #f5f5dc;
+  display: flex; justify-content: center; align-items: center;
+  height: 100vh; text-align: center; background: #faf9f6;
 }
 
-.retro-button {
-  font-family: 'Press Start 2P', cursive;
-  background: #222;
-  color: #fff;
-  border: 3px solid #fff;
-  padding: 10px 20px;
-  margin: 5px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.retro-button:hover {
-  background: #fff;
-  color: #222;
-}
-
-/* App Layout */
+/* ===========================
+   Layout
+=========================== */
 #app-container {
   display: flex;
   height: 100vh;
 }
+
 .sidebar {
-  width: 220px;
-  background: #222;
-  color: #fff;
+  width: 240px;
+  background: var(--sidebar-bg);
+  color: var(--sidebar-fg);
   display: flex;
   flex-direction: column;
-  padding: 20px 10px;
-}
-.sidebar-header h2 {
+  padding: 20px 12px;
   font-size: 14px;
-  margin-bottom: 20px;
 }
+
+.sidebar-header { padding: 8px 8px 16px; }
+.app-title { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: .2px; }
+
 .sidebar-nav {
-  display: flex;
-  flex-direction: column;
+  display: flex; flex-direction: column; gap: 4px;
+  margin-top: 8px;
 }
-.sidebar-btn {
-  margin: 5px 0;
+
+.sidebar-item {
+  margin: 0;
+  background: transparent;
+  border: none;
+  color: inherit;
+  text-align: left;
+  padding: 10px 12px;
+  cursor: pointer;
+  font: inherit;
+  border-radius: var(--radius-sm);
+  transition: background-color .15s ease, transform .05s ease;
 }
+.sidebar-item[aria-selected="true"],
+.sidebar-item:hover {
+  background: rgba(255,255,255,.1);
+}
+.sidebar-item:active { transform: translateY(1px); }
+
 .notification-bell {
   margin-top: auto;
-  font-size: 18px;
   text-align: center;
+  padding: 10px 0 4px;
+  opacity: .95;
+  font-size: 14px;
+}
+.notification-bell #notifCount {
+  display: inline-block;
+  min-width: 22px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--accent-100);
+  color: var(--accent);
+  border: 1px solid var(--accent-200);
+  font-weight: 700;
 }
 
-/* Main content */
 .main-content {
   flex: 1;
-  padding: 20px;
+  padding: 28px;
   overflow-y: auto;
+  background: #fff;
+  border-left: 1px solid var(--border);
 }
 
-/* Profile */
-.profile-header {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 20px;
+/* ===========================
+   Buttons
+=========================== */
+.button {
+  background:#fff;
+  color: var(--text);
+  border:1px solid #222;
+  padding:12px 16px;
+  margin:5px;
+  cursor:pointer;
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+  font-size:14px;
+  border-radius: var(--radius-sm);
 }
-.profile-left {
-  display: flex;
+.button:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+.button:active { transform: translateY(0); }
+
+.button-outline { background: transparent; }
+.button-danger {
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+  color: var(--danger-text);
 }
-.profile-pic-container img {
-  width: 120px;
-  height: 120px;
-  border: 3px solid #222;
+
+/* ===========================
+   Cards / Lists / Grids
+=========================== */
+.card {
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius: var(--radius);
+  padding:16px;
+  box-shadow: var(--shadow);
 }
-.profile-info {
-  margin-left: 20px;
-}
-.posts-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill,minmax(100px,1fr));
-  gap: 10px;
-}
-.posts-grid div {
+
+.card-header { display:flex; align-items:baseline; gap: 6px; justify-content: space-between; }
+
+.card-actions { display:flex; gap:10px; margin-top: 10px; }
+
+.grid.two { display:grid; grid-template-columns: 1fr; gap:16px; }
+@media (min-width: 900px){ .grid.two { grid-template-columns: 1fr 1fr; } }
+
+.list { list-style:none; margin:0; padding:0; }
+.list li { padding:8px 0; border-bottom:1px solid #f3f3f3; }
+.list li:last-child { border-bottom:none; }
+
+/* ===========================
+   Forms
+=========================== */
+.form-row { display:grid; gap: 8px; margin-bottom: 12px; }
+.form-row label { font-size: 13px; color: #333; }
+
+input[type="text"], input[type="email"], input[type="date"], input[type="time"],
+input[type="file"], select, textarea {
   width: 100%;
-  padding-bottom: 100%;
-  background-size: cover;
-  background-position: center;
-  border: 2px solid #222;
+  border: 1px solid #ccc;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font: inherit;
+  background: #fff;
 }
+textarea { min-height: 110px; resize: vertical; }
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--accent-200);
+  box-shadow: 0 0 0 2px var(--accent-100);
+}
+
+.profile-edit-actions { display:flex; gap:10px; }
+
+.toggle { display:inline-flex; align-items:center; gap:8px; user-select:none; }
+.toggle input { transform: translateY(1px); }
+
+/* ===========================
+   Profile
+=========================== */
+.profile-card { display:flex; align-items:center; gap:16px; }
+#profileImage {
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  object-fit: cover;
+  border-radius: 12px;
+  display: block;
+  border: 1px solid var(--border);
+}
+.profile-info p { margin: 0 0 4px; color: var(--text); }
+#profileEmail { color: var(--muted); }
+
+/* ===========================
+   Bulletin
+=========================== */
+.bulletin-toolbar{
+  display:flex;
+  justify-content:flex-end;
+  gap: 8px;
+  margin: 0 0 12px 0;
+}
+
+.bulletin-list { display:grid; gap:12px; }
+
+.bulletin-card .thumb{
+  width:100%; max-height:240px; object-fit:cover; border-radius:8px;
+}
+
+.empty {
+  padding: 16px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  background: #fafafa;
+  color: var(--muted);
+}
+
+/* Badges + “Saved” (Option B) */
+.badge {
+  display:inline-block;
+  font-size:12px;
+  padding:2px 8px;
+  border-radius:999px;
+  border:1px solid transparent;
+}
+.badge.saved {
+  background: var(--accent-100);
+  color: var(--accent);
+  border-color: var(--accent-200);
+}
+.bulletin-card.is-saved {
+  outline: 2px solid var(--accent-200);
+  background: var(--accent-50);
+}
+.save-star { font-size:.9em; color: var(--accent); }
+
+/* ===========================
+   Dashboard quick tweaks
+=========================== */
+#dashboardContent .card h3 { margin-top: 0; }
+
+/* ===========================
+   Calendar (FullCalendar)
+=========================== */
+#calendarGrid { display:block; }
+.fc .fc-daygrid-event { border-radius: 8px; padding: 2px 6px; }
+.fc-type-badge {
+  font-size:10px;
+  opacity:.85;
+  margin-left:6px;
+  padding:2px 6px;
+  border-radius:999px;
+  border:1px solid currentColor;
+}
+.fc-saved .fc-event-main { font-weight: 600; }
+
+/* ===========================
+   Header
+=========================== */
+header { padding: 14px 20px; border-bottom: 1px solid var(--border); background: #fff; }
+#welcomeHeading { margin: 0; font-size: 22px; font-weight: 800; }
+
+/* ===========================
+   Utilities
+=========================== */
+.muted { color: var(--muted); }
+.center { text-align:center; }
+.right { text-align:right; }

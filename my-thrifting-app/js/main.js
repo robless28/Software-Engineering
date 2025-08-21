@@ -1,896 +1,720 @@
-document.addEventListener("DOMContentLoaded", () => {
-  // Sections
-  const landingIntro = document.getElementById("landing-intro");
-  const chooseAuth = document.getElementById("choose-auth");
-  const signupSection = document.getElementById("signup-section");
-  const loginSection = document.getElementById("login-section");
-  const appContainer = document.getElementById("app-container");
-  const dashboard = document.getElementById("dashboard");
-  const bulletin = document.getElementById("bulletin");
-  const calendar = document.getElementById("calendar");
-  const profile = document.getElementById("profile");
+(function () {
+  const $ = (sel, scope = document) => scope.querySelector(sel);
+  const $$ = (sel, scope = document) => Array.from(scope.querySelectorAll(sel));
 
-  // Buttons / Forms
-  const continueBtn = document.getElementById("continueBtn");
-  const goToSignup = document.getElementById("goToSignup");
-  const goToLogin = document.getElementById("goToLogin");
-  const toLogin = document.getElementById("toLogin");
-  const toSignup = document.getElementById("toSignup");
-  const signupForm = document.getElementById("signupForm");
-  const loginForm = document.getElementById("loginForm");
-  const logoutBtn = document.getElementById("logoutBtn");
+  const safeUUID = () =>
+  (window.crypto && typeof window.crypto.randomUUID === 'function')
+    ? window.crypto.randomUUID()
+    : 'id-' + Math.random().toString(36).slice(2) + Date.now();
 
-  const sidebarButtons = document.querySelectorAll(".sidebar-btn");
+  const navButtons = $$('.sidebar-nav .sidebar-item');
+  const views = {
+    dashboardView: $('#dashboardView'),
+    bulletinView: $('#bulletinView'),
+    calendarView: $('#calendarView'),
+    profileView: $('#profileView'),
+  };
 
-  // Profile elements
-  const editProfileBtn = document.getElementById("editProfileBtn");
-  const profileForm = document.getElementById("profileForm");
-  const closeProfile = document.getElementById("closeProfile");
+  const notifBell = $('#notificationBell');
+  const notifCountEl = $('#notifCount');
 
-  let currentUser = JSON.parse(localStorage.getItem("currentUser")) || null;
+  // Dashboard
+  const dashboardContent = $('#dashboardContent');
+  const welcomeHeading = $('#welcomeHeading');
 
-  // --------------------------
-  // Continue button
-  continueBtn?.addEventListener("click", () => {
-    landingIntro.style.display = "none";
-    chooseAuth.style.display = "block";
-  });
+  // Bulletin
+  const bulletinList = $('#bulletinList');
+  const bulletinPostsContainer = $('#bulletinPosts');
+  const newBulletinForm = $('#newBulletinForm');
+  const bulletinTitle = $('#bulletinTitle');
+  const bulletinBody = $('#bulletinBody');
+  const bulletinDate = $('#bulletinDate');
+  const bulletinTime = $('#bulletinTime');
+  const bulletinImage = $('#bulletinImage');
+  const bulletinType = $('#bulletinType');
+  const newBulletinFormContainer = $('#newBulletinFormContainer'); // you need this
+  const toggleNewPostBtn = $('#toggleNewBulletinForm');
+  const refreshBulletinButton = $('#refreshBulletinButton');
 
-  // Navigation Auth
-  goToSignup?.addEventListener("click", () => {
-    chooseAuth.style.display = "none";
-    signupSection.style.display = "block";
-  });
-  goToLogin?.addEventListener("click", () => {
-    chooseAuth.style.display = "none";
-    loginSection.style.display = "block";
-  });
-  toLogin?.addEventListener("click", e => {
-    e.preventDefault();
-    signupSection.style.display = "none";
-    loginSection.style.display = "block";
-  });
-  toSignup?.addEventListener("click", e => {
-    e.preventDefault();
-    loginSection.style.display = "none";
-    signupSection.style.display = "block";
-  });
 
-  // --------------------------
-  // Sign Up
-  signupForm?.addEventListener("submit", e => {
-    e.preventDefault();
-    const name = document.getElementById("signupName")?.value.trim();
-    const email = document.getElementById("signupEmail")?.value.trim().toLowerCase();
-    const password = document.getElementById("signupPassword")?.value;
-    const confirm = document.getElementById("signupPasswordConfirm")?.value;
-    const role = document.getElementById("signupRole")?.value;
+  // Calendar
+  const calendarGrid = $('#calendarGrid');
+  const calendarContent = $('#calendarContent');
+  const calendarFilter = $('#calendarFilter');
+  const calendarSavedOnly = $('#calendarSavedOnly');
 
-    if (!name || !email || !password || !role) return alert("Please fill all fields.");
-    if (password !== confirm) return alert("Passwords do not match.");
+  // Profile
+  const profileCard = $('.profile-card');
+  const profileImage = $('#profileImage');
+  const profileName = $('#profileName');
+  const profileEmail = $('#profileEmail');
+  const profileBio = $('#profileBio');
+  const editProfileButton = $('#editProfileButton');
+  const profileEditFormContainer = $('#profileEditFormContainer');
+  const profileEditForm = $('#profileEditForm');
+  const editProfileName = $('#editProfileName');
+  const editProfileEmail = $('#editProfileEmail');
+  const editProfileBio = $('#editProfileBio');
+  const editProfileImage = $('#editProfileImage');
+  const cancelEditProfileButton = $('#cancelEditProfileButton');
 
-    let users = JSON.parse(localStorage.getItem("users")) || [];
-    if (users.some(u => u.email === email)) return alert("Email already registered.");
+  // -------- STATE & STORAGE --------
+  const LS_KEYS = {
+    POSTS: 'thriftPosts',
+    PROFILE: 'thriftProfile',
+    LAST_SEEN_TS: 'thriftLastSeen',
+    SAVED: 'thriftSavedEventIds',
+  };
 
-    const newUser = {
-      name,
-      email,
-      password,
-      role,
-      followedVendors: [],
-      savedPosts: [],
-      posts: [],
-      contact: "",
-      socials: "",
-      bio: "",
-      profilePic: ""
-    };
+  const getSavedIds = () => storage.get(LS_KEYS.SAVED, []);
+  const setSavedIds = (ids) => storage.set(LS_KEYS.SAVED, ids);
+  const isSaved = (id) => getSavedIds().includes(id);
+  const toggleSaved = (id) => {
+  let ids = getSavedIds();
+  ids = ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id];
+  setSavedIds(ids);
+};
+function cleanupSavedOrphans() {
+  const posts = storage.get(LS_KEYS.POSTS, []);
+  const valid = new Set(posts.map(p => p.id));
+  setSavedIds(getSavedIds().filter(id => valid.has(id)));
+}
 
-    users.push(newUser);
-    localStorage.setItem("users", JSON.stringify(users));
+  function updateHeaderName() {
+  const profile = storage.get(LS_KEYS.PROFILE, {});
+  const name = (profile?.name || '').trim() || 'Name';
+  if (welcomeHeading) welcomeHeading.textContent = `Welcome, ${name}!`;
+}
 
-    alert("Sign-up successful! Please log in.");
-    signupForm.reset();
-    signupSection.style.display = "none";
-    loginSection.style.display = "block";
-  });
+  const nowIso = () => new Date().toISOString();
 
-  // --------------------------
-  // Login
-  loginForm?.addEventListener("submit", e => {
-    e.preventDefault();
-    const loginEmail = document.getElementById("loginEmail")?.value.trim().toLowerCase();
-    const loginPassword = document.getElementById("loginPassword")?.value;
+  const storage = {
+    get(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : fallback;
+      } catch {
+        return fallback;
+      }
+    },
+    set(key, value) {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch (e) {
+        console.warn(`Failed to set ${key} in localStorage:`, e);
+      }
+    },
+  };
 
-    const users = JSON.parse(localStorage.getItem("users")) || [];
-    const user = users.find(u => u.email === loginEmail && u.password === loginPassword);
-
-    if (!user) return alert("Invalid credentials. Please try again.");
-
-    currentUser = user;
-    localStorage.setItem("currentUser", JSON.stringify(currentUser));
-
-    showView("dashboard");
-  });
-
-  // --------------------------
-  // Logout
-  logoutBtn?.addEventListener("click", () => {
-    currentUser = null;
-    localStorage.removeItem("currentUser");
-    appContainer.style.display = "none";
-    landingIntro.style.display = "block";
-  });
-
-  // --------------------------
-  // Sidebar navigation
-  sidebarButtons.forEach(btn => {
-    btn.addEventListener("click", () => {
-      const view = btn.getAttribute("data-view");
-      showView(view);
-    });
-  });
-
-  // --------------------------
-  function showView(view) {
-    landingIntro.style.display = "none";
-    chooseAuth.style.display = "none";
-    signupSection.style.display = "none";
-    loginSection.style.display = "none";
-    appContainer.style.display = "flex";
-
-    [dashboard, bulletin, calendar, profile].forEach(s => s.style.display = "none");
-
-    switch(view) {
-      case "dashboard": renderDashboard(); break;
-      case "bulletin": renderBulletin(); break;
-      case "calendar": renderCalendar(currentMonthOffset); break;
-      case "profile": renderProfile(); break;
+  // Seed sample data if empty
+  function ensureSeeds() {
+    const posts = storage.get(LS_KEYS.POSTS, null);
+    if (!posts) {
+      const seed = [
+        {
+          id: safeUUID(),
+          title: 'RGV Night Market',
+          body: 'Vendors wanted! Live music and food trucks.',
+          date: isoForDayOffset(3), // 3 days from now
+          time: '18:00',
+          type: 'market',
+          image: '',
+          createdAt: nowIso(),
+        },
+        {
+          id: safeUUID(),
+          title: 'Community Swap',
+          body: 'Bring clothes to swap! Family-friendly.',
+          date: isoForDayOffset(10),
+          time: '11:00',
+          type: 'swap',
+          image: '',
+          createdAt: nowIso(),
+        },
+      ];
+      storage.set(LS_KEYS.POSTS, seed);
+    }
+    
+    const profile = storage.get(LS_KEYS.PROFILE, null);
+    if (!profile) {
+      storage.set(LS_KEYS.PROFILE, {
+        name: 'Name',
+        email: 'email@example.com',
+        bio: 'Tell people about your shop or interests!',
+        image: 'images/default-profile.png',
+      });
     }
 
-    if (view) {
-      const el = document.getElementById(view);
-      if (el) el.style.display = "block";
+    if (!storage.get(LS_KEYS.LAST_SEEN_TS, null)) {
+      storage.set(LS_KEYS.LAST_SEEN_TS, nowIso());
     }
   }
 
-  // --------------------------
+  function isoForDayOffset(offset) {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  // -------- NAVIGATION --------
+  function showView(viewId) {
+    Object.entries(views).forEach(([id, el]) => {
+      if (!el) return;
+      if (id === viewId) {
+        el.removeAttribute('hidden');
+      } else {
+        el.setAttribute('hidden', 'true');
+      }
+    });
+
+    // aria-selected for nav buttons
+    navButtons.forEach((btn) => {
+      const target = btn.getAttribute('data-view') || `${btn.id}View`;
+      btn.setAttribute('aria-selected', target === viewId ? 'true' : 'false');
+    });
+
+    // Load view-specific data
+    if (viewId === 'dashboardView') renderDashboard();
+    if (viewId === 'bulletinView') renderBulletin();
+    if (viewId === 'calendarView') renderFullCalendar();
+    if (viewId === 'profileView') renderProfile();
+
+    document.querySelector('.main-content')?.scrollTo({ top: 0, behavior: 'smooth' }); 
+  }
+
+  function handleNavClick(e) {
+    const btn = e.currentTarget;
+    const targetView = btn.getAttribute('data-view') || `${btn.id}View`;
+    showView(targetView);
+  }
+
+  // -------- NOTIFICATIONS --------
+  function updateNotifications() {
+    const posts = storage.get(LS_KEYS.POSTS, []);
+    const lastSeen = new Date(storage.get(LS_KEYS.LAST_SEEN_TS, nowIso()));
+    const unread = posts.filter((p) => new Date(p.createdAt) > lastSeen).length;
+    notifCountEl.textContent = String(unread);
+    notifBell.title = `${unread} new ${unread === 1 ? 'post' : 'posts'}`;
+  }
+
+  function markSeen() {
+    storage.set(LS_KEYS.LAST_SEEN_TS, nowIso());
+    updateNotifications();
+  }
+
+  // -------- DASHBOARD --------
   function renderDashboard() {
-  const dashContent = document.getElementById("dashboardContent");
-  dashContent.innerHTML = `<h2>Welcome back, ${currentUser?.name || ""}!</h2>`;
+    const posts = storage.get(LS_KEYS.POSTS, []);
+    const now = new Date();
 
-  const users = JSON.parse(localStorage.getItem("users")) || [];
-  const allPosts = users.flatMap(u => (u.posts || []).map(p => ({ ...p, author: u.name })));
-  const todayStr = new Date().toISOString().split("T")[0];
+    const upcoming = posts
+      .filter((p) => new Date(`${p.date}T${p.time || '00:00'}`) >= now)
+      .sort((a, b) => new Date(`${a.date}T${a.time || '00:00'}`) - new Date(`${b.date}T${b.time || '00:00'}`))
+      .slice(0, 5);
 
-  // --------------------------
-  // Upcoming RSVPd Events Section
-  const upcomingEventsDiv = document.createElement("div");
-  upcomingEventsDiv.style.border = "2px solid #000";
-  upcomingEventsDiv.style.borderRadius = "10px";
-  upcomingEventsDiv.style.padding = "10px";
-  upcomingEventsDiv.style.marginBottom = "20px";
-  upcomingEventsDiv.style.backgroundColor = "#f0f8ff";
-  upcomingEventsDiv.innerHTML = "<h3 style='margin-bottom:10px;'>Upcoming Events You RSVPd To:</h3>";
+    const recent = [...posts]
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 5);
 
-  const rsvpdEvents = allPosts
-    .filter(evt => currentUser.savedPosts?.some(r => r.title === evt.title && r.date === evt.date))
-    .filter(evt => evt.date >= todayStr)
-    .sort((a,b) => new Date(a.date) - new Date(b.date));
+    const savedIds = new Set(getSavedIds());
+    const savedUpcoming = posts
+      .filter((p) => savedIds.has(p.id) && new Date(`${p.date}T${p.time || '00:00'}`) >= now)
+      .sort((a, b) => new Date(`${a.date}T${a.time || '00:00'}`) - new Date(`${b.date}T${b.time || '00:00'}`))
+      .slice(0, 5); 
 
-  if (rsvpdEvents.length === 0) {
-    upcomingEventsDiv.innerHTML += "<p>No upcoming RSVPd events.</p>";
-  } else {
-    const eventsList = document.createElement("div");
-    eventsList.style.display = "flex";
-    eventsList.style.flexWrap = "wrap";
-    eventsList.style.gap = "10px";
+    dashboardContent.innerHTML = `
+      <div class="grid two">
+        <div class="card">
+          <h3>Upcoming Events</h3>
+          <ul class="list">
+            ${upcoming.map(eventLi).join('') || '<li>No upcoming events yet.</li>'}
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Recent Bulletin Posts</h3>
+          <ul class="list">
+            ${recent.map(postLi).join('') || '<li>No posts yet.</li>'}
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Saved Upcoming Events</h3>
+          <ul class="list">
+            ${savedUpcoming.map(eventLi).join('') || '<li>No saved events.</li>'}
+          </ul>
+        </div>
+      </div>
+    `;
+  }
 
-    rsvpdEvents.forEach(evt => {
-      const evtCard = document.createElement("div");
-      evtCard.style.border = "1px solid #333";
-      evtCard.style.borderRadius = "8px";
-      evtCard.style.padding = "10px";
-      evtCard.style.width = "200px";
-      evtCard.style.backgroundColor = "#fff";
-      evtCard.style.cursor = "pointer";
-      evtCard.title = "Click for details";
-
-      evtCard.innerHTML = `
-        <strong>${evt.title}</strong><br>
-        <small>${evt.date}</small><br>
-        <em>${evt.author}</em>
-      `;
-
-      evtCard.addEventListener("click", () => {
-        alert(`${evt.title}\n${evt.desc}\nDate: ${evt.date}\nOrganizer: ${evt.author}`);
-      });
-
-      eventsList.appendChild(evtCard);
+  function eventLi(p) {
+    const when = new Date(`${p.date}T${p.time || '00:00'}`);
+    const dateStr = when.toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
     });
-
-    upcomingEventsDiv.appendChild(eventsList);
+    return `<li>
+      <strong>${escapeHTML(p.title)}</strong>
+      <span class="muted">• ${dateStr} • ${p.type ?? 'event'}</span>
+    </li>`;
   }
 
-  dashContent.appendChild(upcomingEventsDiv);
-
-  // --------------------------
-  // Vendor Search Section
-  const searchDiv = document.createElement("div");
-  searchDiv.style.border = "2px solid #000";
-  searchDiv.style.borderRadius = "10px";
-  searchDiv.style.padding = "10px";
-  searchDiv.style.backgroundColor = "#fff0f5";
-  searchDiv.innerHTML = `
-    <h3>Search Vendors</h3>
-    <input type="text" id="vendorSearchInput" placeholder="Search by name..." style="padding:5px;width:250px;margin-bottom:10px;">
-    <div id="vendorSearchResults" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:10px;"></div>
-  `;
-  dashContent.appendChild(searchDiv);
-
-  const searchInput = document.getElementById("vendorSearchInput");
-  const searchResults = document.getElementById("vendorSearchResults");
-
-  function updateSearchResults() {
-    const query = searchInput.value.trim().toLowerCase();
-    searchResults.innerHTML = "";
-
-    if (!query) return;
-
-    const vendors = users.filter(u => u.role === "vendor/organizer" && u.name.toLowerCase().includes(query));
-    if (vendors.length === 0) {
-      searchResults.innerHTML = "<p>No vendors found.</p>";
-      return;
-    }
-
-    vendors.forEach(vendor => {
-      const vendorCard = document.createElement("div");
-      vendorCard.style.display = "flex";
-      vendorCard.style.flexDirection = "column";
-      vendorCard.style.alignItems = "center";
-      vendorCard.style.border = "1px solid #333";
-      vendorCard.style.borderRadius = "10px";
-      vendorCard.style.padding = "5px";
-      vendorCard.style.width = "120px";
-      vendorCard.style.cursor = "pointer";
-      vendorCard.style.backgroundColor = "#fff";
-      vendorCard.title = vendor.name;
-
-      const img = document.createElement("img");
-      img.src = vendor.profilePic || "https://via.placeholder.com/80";
-      img.alt = vendor.name;
-      img.style.width = "80px";
-      img.style.height = "80px";
-      img.style.borderRadius = "50%";
-      img.style.border = "2px solid #000";
-      vendorCard.appendChild(img);
-
-      const nameSpan = document.createElement("span");
-      nameSpan.textContent = vendor.name;
-      nameSpan.style.marginTop = "5px";
-      nameSpan.style.textAlign = "center";
-      vendorCard.appendChild(nameSpan);
-
-      vendorCard.addEventListener("click", () => showVendorProfile(vendor));
-
-      searchResults.appendChild(vendorCard);
+  function postLi(p) {
+    const when = new Date(p.createdAt).toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric', 
+      year: 'numeric',
     });
+    return `<li>
+      <strong>${escapeHTML(p.title)}</strong>
+      <span class="muted">• posted ${when}</span>
+    </li>`;
   }
 
-  searchInput.addEventListener("input", updateSearchResults);
+  // -------- BULLETIN --------
+  const filterSavedOnly = $('#filterSavedOnly');
 
-  // --------------------------
-  // Followed Vendors Display
-  const followedDiv = document.createElement("div");
-  followedDiv.style.marginTop = "20px";
-  followedDiv.innerHTML = "<h3>Followed Vendors:</h3>";
-
-  if (!currentUser.followedVendors || currentUser.followedVendors.length === 0) {
-    followedDiv.innerHTML += "<p>No followed vendors.</p>";
-  } else {
-    const vendorContainer = document.createElement("div");
-    vendorContainer.style.display = "flex";
-    vendorContainer.style.flexWrap = "wrap";
-    vendorContainer.style.gap = "10px";
-
-    currentUser.followedVendors.forEach(vendorEmail => {
-      const vendor = users.find(u => u.email === vendorEmail);
-      if (vendor) {
-        const vendorIcon = document.createElement("img");
-        vendorIcon.src = vendor.profilePic || "https://via.placeholder.com/80";
-        vendorIcon.alt = vendor.name;
-        vendorIcon.title = vendor.name;
-        vendorIcon.style.width = "80px";
-        vendorIcon.style.height = "80px";
-        vendorIcon.style.borderRadius = "50%";
-        vendorIcon.style.border = "3px solid #000";
-        vendorIcon.style.cursor = "pointer";
-
-        vendorIcon.addEventListener("click", () => showVendorProfile(vendor));
-        vendorContainer.appendChild(vendorIcon);
-      }
-    });
-
-    followedDiv.appendChild(vendorContainer);
+  if (filterSavedOnly) {
+    filterSavedOnly.addEventListener('change', renderBulletin);
   }
 
-  dashContent.appendChild(followedDiv);
-}
-
-// --------------------------
-// Vendor profile overlay
-function showVendorProfile(vendor) {
-  const modal = document.createElement("div");
-  modal.style.position = "fixed";
-  modal.style.top = "0";
-  modal.style.left = "0";
-  modal.style.width = "100%";
-  modal.style.height = "100%";
-  modal.style.backgroundColor = "rgba(0,0,0,0.8)";
-  modal.style.display = "flex";
-  modal.style.flexDirection = "column";
-  modal.style.alignItems = "center";
-  modal.style.justifyContent = "center";
-  modal.style.zIndex = "2000";
-
-  const content = document.createElement("div");
-  content.style.backgroundColor = "#fff";
-  content.style.padding = "20px";
-  content.style.border = "3px solid #000";
-  content.style.borderRadius = "10px";
-  content.style.width = "400px";
-  content.style.maxHeight = "80vh";
-  content.style.overflowY = "auto";
-  content.style.fontFamily = "'Press Start 2P', cursive";
-  modal.appendChild(content);
-
-  const closeBtn = document.createElement("button");
-  closeBtn.textContent = "Close";
-  closeBtn.className = "retro-button";
-  closeBtn.style.alignSelf = "flex-end";
-  closeBtn.addEventListener("click", () => document.body.removeChild(modal));
-  content.appendChild(closeBtn);
-
-  const nameEl = document.createElement("h2");
-  nameEl.textContent = vendor.name;
-  content.appendChild(nameEl);
-
-  if (vendor.bio) {
-    const bioEl = document.createElement("p");
-    bioEl.textContent = vendor.bio;
-    content.appendChild(bioEl);
-  }
-
-  if (vendor.socials) {
-    const socialsEl = document.createElement("p");
-    socialsEl.textContent = "Socials: " + vendor.socials;
-    content.appendChild(socialsEl);
-  }
-
-  const eventsTitle = document.createElement("h3");
-  eventsTitle.textContent = "Events:";
-  content.appendChild(eventsTitle);
-
-  if (!vendor.posts || vendor.posts.length === 0) {
-    const p = document.createElement("p");
-    p.textContent = "No events posted yet.";
-    content.appendChild(p);
-  } else {
-    const todayStr = new Date().toISOString().split("T")[0];
-    const sortedEvents = vendor.posts.sort((a,b) => new Date(a.date) - new Date(b.date));
-
-    sortedEvents.forEach(evt => {
-      const evtDiv = document.createElement("div");
-      evtDiv.style.border = "1px solid #000";
-      evtDiv.style.borderRadius = "5px";
-      evtDiv.style.padding = "5px";
-      evtDiv.style.marginBottom = "5px";
-      evtDiv.style.backgroundColor = (evt.date >= todayStr) ? "#d1ffd6" : "#f5f5f5"; // green for upcoming
-      evtDiv.style.cursor = "pointer";
-
-      evtDiv.innerHTML = `
-        <strong>${evt.title}</strong><br>
-        ${evt.date}<br>
-        ${evt.desc}
-      `;
-
-      // Add click to open RSVP modal
-      evtDiv.addEventListener("click", () => {
-        openRSVPModal(evt, vendor.name);
-      });
-
-      content.appendChild(evtDiv);
-    });
-  }
-
-  document.body.appendChild(modal);
-}
-
-// Reusable RSVP Modal Function
-function openRSVPModal(evt, authorName) {
-  const modal = document.createElement("div");
-  modal.style.position = "fixed";
-  modal.style.top = "0";
-  modal.style.left = "0";
-  modal.style.width = "100%";
-  modal.style.height = "100%";
-  modal.style.backgroundColor = "rgba(0,0,0,0.8)";
-  modal.style.display = "flex";
-  modal.style.justifyContent = "center";
-  modal.style.alignItems = "center";
-  modal.style.zIndex = "3000";
-
-  const content = document.createElement("div");
-  content.style.backgroundColor = "#fff";
-  content.style.padding = "20px";
-  content.style.border = "3px solid #000";
-  content.style.fontFamily = "'Press Start 2P', cursive";
-  content.style.width = "300px";
-  content.style.position = "relative";
-
-  const closeBtn = document.createElement("button");
-  closeBtn.textContent = "Close";
-  closeBtn.className = "retro-button";
-  closeBtn.style.position = "absolute";
-  closeBtn.style.top = "5px";
-  closeBtn.style.right = "5px";
-  closeBtn.addEventListener("click", () => document.body.removeChild(modal));
-  content.appendChild(closeBtn);
-
-  const titleEl = document.createElement("h3");
-  titleEl.textContent = evt.title;
-  const descEl = document.createElement("p");
-  descEl.textContent = evt.desc;
-  const dateEl = document.createElement("p");
-  dateEl.textContent = `Date: ${evt.date}`;
-  const authorEl = document.createElement("p");
-  authorEl.textContent = `Organizer: ${authorName}`;
-
-  const rsvpBtn = document.createElement("button");
-  rsvpBtn.className = "retro-button";
-
-  // Check if currentUser already RSVPed
-  const isRSVP = currentUser?.savedPosts?.some(r => r.date === evt.date && r.title === evt.title);
-  rsvpBtn.textContent = isRSVP ? "Cancel RSVP" : "RSVP";
-
-  rsvpBtn.addEventListener("click", () => {
-    if (!currentUser.savedPosts) currentUser.savedPosts = [];
-    const idx = currentUser.savedPosts.findIndex(r => r.date === evt.date && r.title === evt.title);
-    if (idx !== -1) currentUser.savedPosts.splice(idx, 1);
-    else currentUser.savedPosts.push({ title: evt.title, date: evt.date });
-
-    // Update localStorage
-    let users = JSON.parse(localStorage.getItem("users")) || [];
-    const userIdx = users.findIndex(u => u.email === currentUser.email);
-    if (userIdx !== -1) {
-      users[userIdx] = currentUser;
-      localStorage.setItem("users", JSON.stringify(users));
-      localStorage.setItem("currentUser", JSON.stringify(currentUser));
-    }
-
-    modal.remove();
-    renderDashboard();   // Refresh upcoming RSVP events on dashboard
-    renderCalendarWithModal(); // Refresh calendar highlights
-  });
-
-  content.appendChild(titleEl);
-  content.appendChild(descEl);
-  content.appendChild(dateEl);
-  content.appendChild(authorEl);
-  content.appendChild(rsvpBtn);
-
-  modal.appendChild(content);
-  document.body.appendChild(modal);
-}
-
-
-
-  // --------------------------
   function renderBulletin() {
-    const postsContainer = document.getElementById("bulletinPosts");
-    postsContainer.innerHTML = "";
+    const posts = storage.get(LS_KEYS.POSTS, []);
+    const list = filterSavedOnly?.checked ? posts.filter(p => isSaved(p.id)) : posts;
 
-    const users = JSON.parse(localStorage.getItem("users")) || [];
-    const allPosts = users.flatMap(u => (u.posts || []).map(p => ({ ...p, author: u.name })));
+    bulletinList.innerHTML = `
+      <div class="muted">
+        ${filterSavedOnly?.checked ? 'Saved posts' : 'Total posts'}: ${list.length}
+      </div>
+    `;
 
-    if (allPosts.length === 0) {
-      postsContainer.innerHTML = "<p>No events yet</p>";
+    const html = list
+      .sort((a, b) => new Date(`${a.date}T${a.time || '00:00'}`) - new Date(`${b.date}T${b.time || '00:00'}`))
+      .map(bulletinCard)
+      .join('');
+
+    bulletinPostsContainer.innerHTML = html || `
+      <div class="empty">No ${filterSavedOnly?.checked ? 'saved ' : ''}posts yet.</div>
+    `;
+  }
+
+
+
+  function bulletinCard(p) {
+    const dateStr = new Date(`${p.date}T${p.time || '00:00'}`).toLocaleDateString(undefined, {
+      month: 'short', day: 'numeric', year: 'numeric',
+    });
+    const img = p.image ? `<img class="thumb" src="${p.image}" alt="">` : '';
+    const typeBadge = p.type ? `<span class="badge">${p.type}</span>` : '';
+
+    const saved = isSaved(p.id); // boolean
+    const savedBadge = saved ? `<span class="badge saved">Saved</span>` : '';
+
+    return `
+      <article class="card bulletin-card ${saved ? 'is-saved' : ''}" data-id="${p.id}">
+        <header class="card-header">
+          <h4>${escapeHTML(p.title)} ${typeBadge} ${savedBadge}</h4>
+          <div class="muted">${dateStr}</div>
+        </header>
+        ${img}
+        <p>${escapeHTML(p.body)}</p>
+        <footer class="card-actions">
+          <button class="button button-outline" data-action="save" data-id="${p.id}" aria-pressed="${saved}" aria-label="${saved ? 'Unsave event' : 'Save event'}">
+            ${saved ? 'Saved' : 'Save'}
+          </button>
+          <button class="button button-danger" data-action="delete" data-id="${p.id}">Delete</button>
+        </footer>
+      </article>
+    `;
+  }
+
+  function handleBulletinSubmit(e) {
+    e.preventDefault();
+
+    const title = bulletinTitle.value.trim();
+    const body = bulletinBody.value.trim();
+    const date = bulletinDate.value;
+    const time = bulletinTime.value || '00:00';
+    const type  = (bulletinType && bulletinType.value) ? bulletinType.value : guessType(title);
+    
+    const eventDT = new Date(`${date}T${time}`);
+    if (isNaN(eventDT) || eventDT < new Date()) {
+      alert('Please select a valid future date and time.');
       return;
     }
 
-    allPosts.sort((a, b) => new Date(b.date) - new Date(a.date));
+    if (!title || !body || !date) return;
 
-    allPosts.forEach(evt => {
-      const div = document.createElement("div");
-      div.className = "bulletin-post";
-      div.style.border = "2px solid #000";
-      div.style.padding = "10px";
-      div.style.marginBottom = "10px";
-      div.style.borderRadius = "5px";
-      div.style.backgroundColor = "#fff";
-
-      const imgHTML = evt.pic ? `<img src="${evt.pic}" alt="Event Image" style="max-width:100%; margin-bottom:5px;">` : "";
-
-      div.innerHTML = `
-        ${imgHTML}
-        <h3>${evt.title}</h3>
-        <p>${evt.desc}</p>
-        <small>${evt.date || ""} — <strong>${evt.author}</strong></small>
-      `;
-      postsContainer.appendChild(div);
-    });
-  }
-
-  // --------------------------
-  function renderProfile() {
-    document.getElementById("profileNameDisplay").textContent = currentUser?.name || "";
-    document.getElementById("profileRoleDisplay").textContent = currentUser?.role || "";
-    document.getElementById("profilePicDisplay").src = currentUser?.profilePic || "https://via.placeholder.com/120";
-    profileForm.style.display = "none";
-    editProfileBtn.style.display = (currentUser?.role === "vendor/organizer") ? "block" : "none";
-  }
-
-  editProfileBtn?.addEventListener("click", () => { profileForm.style.display = "block"; });
-  closeProfile?.addEventListener("click", () => { profileForm.style.display = "none"; });
-
-  // --------------------------
-  // Bulletin post creation
-  const createPostBtn = document.createElement("button");
-  createPostBtn.textContent = "Create Post";
-  createPostBtn.className = "retro-button";
-  createPostBtn.style.display = "block";
-  createPostBtn.style.margin = "10px 0";
-
-  const bulletinPosts = document.getElementById("bulletinPosts");
-  if (bulletinPosts) bulletinPosts.parentNode.insertBefore(createPostBtn, bulletinPosts);
-
-  const formContainer = document.getElementById("newBulletinFormContainer");
-  const newBulletinForm = document.getElementById("newBulletinForm");
-
-  createPostBtn.addEventListener("click", () => {
-    formContainer.style.display = "block";
-    createPostBtn.style.display = "none";
-  });
-
-  newBulletinForm?.addEventListener("submit", function(e) {
-    e.preventDefault();
-    const title = document.getElementById("bulletinTitle").value.trim();
-    const desc = document.getElementById("bulletinDesc").value.trim();
-    const date = document.getElementById("bulletinDate").value;
-    const pic = document.getElementById("bulletinPic").value;
-
-    if (!title || !desc) return alert("Please fill in title and description.");
-
-    currentUser.posts.push({ title, desc, date, pic });
-
-    let users = JSON.parse(localStorage.getItem("users")) || [];
-    const idx = users.findIndex(u => u.email === currentUser.email);
-    if (idx !== -1) {
-      users[idx] = currentUser;
-      localStorage.setItem("users", JSON.stringify(users));
-      localStorage.setItem("currentUser", JSON.stringify(currentUser));
-    }
-
-    renderBulletin();
-    newBulletinForm.reset();
-    formContainer.style.display = "none";
-    createPostBtn.style.display = "block";
-  });
-
-  
-
-  // --------------------------
-  // Calendar variables
-  let currentMonthOffset = 0; // 0 = current month
-
-  // --------------------------
-  function renderCalendar(offset = 0) {
-    const cal = document.getElementById("calendarGrid");
-    cal.innerHTML = "";
-
-    const today = new Date();
-    const firstDay = new Date(today.getFullYear(), today.getMonth() + offset, 1);
-    const month = firstDay.getMonth();
-    const year = firstDay.getFullYear();
-
-    const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-    const monthHeader = document.createElement("h3");
-    monthHeader.textContent = `${monthNames[month]} ${year}`;
-    cal.appendChild(monthHeader);
-
-    // Add navigation
-    const navDiv = document.createElement("div");
-    navDiv.style.display = "flex";
-    navDiv.style.justifyContent = "space-between";
-    navDiv.style.marginBottom = "10px";
-
-    const prevBtn = document.createElement("button");
-    prevBtn.textContent = "Prev";
-    prevBtn.className = "retro-button";
-    prevBtn.onclick = () => { currentMonthOffset--; renderCalendar(currentMonthOffset); };
-
-    const nextBtn = document.createElement("button");
-    nextBtn.textContent = "Next";
-    nextBtn.className = "retro-button";
-    nextBtn.onclick = () => { currentMonthOffset++; renderCalendar(currentMonthOffset); };
-
-    navDiv.appendChild(prevBtn);
-    navDiv.appendChild(nextBtn);
-    cal.appendChild(navDiv);
-
-    // Grid
-    const grid = document.createElement("div");
-    grid.style.display = "grid";
-    grid.style.gridTemplateColumns = "repeat(7, 1fr)";
-    grid.style.gap = "5px";
-
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const startDay = firstDay.getDay(); // Sunday=0
-
-    for (let i=0; i<startDay; i++){
-      const empty = document.createElement("div");
-      grid.appendChild(empty);
-    }
-
-    const users = JSON.parse(localStorage.getItem("users")) || [];
-    const allPosts = users.flatMap(u => (u.posts || []).map(p => ({ ...p, author: u.name })));
-
-    for (let day=1; day<=daysInMonth; day++){
-      const dayCell = document.createElement("div");
-      dayCell.style.border = "1px solid #000";
-      dayCell.style.padding = "10px";
-      dayCell.style.minHeight = "60px";
-      dayCell.style.cursor = "default";
-      dayCell.textContent = day;
-
-      const cellDateStr = `${year}-${(month+1).toString().padStart(2,'0')}-${day.toString().padStart(2,'0')}`;
-      const eventsToday = allPosts.filter(evt => evt.date === cellDateStr);
-      eventsToday.forEach(evt => {
-        const evtDiv = document.createElement("div");
-        evtDiv.textContent = evt.title;
-        evtDiv.style.backgroundColor = currentUser.savedPosts?.some(r => r.title===evt.title && r.date===evt.date) ? "#fffa65" : "#add8e6";
-        evtDiv.style.marginTop = "3px";
-        evtDiv.style.padding = "2px";
-        evtDiv.style.cursor = "pointer";
-        evtDiv.dataset.eventObj = JSON.stringify(evt);
-        evtDiv.onclick = () => openEventModal(evt);
-        dayCell.appendChild(evtDiv);
-      });
-
-      grid.appendChild(dayCell);
-    }
-
-    cal.appendChild(grid);
-  }
-
-  // --------------------------
-  // Event modal
-  const eventModal = document.createElement("div");
-  eventModal.style.position = "fixed";
-  eventModal.style.top = "0";
-  eventModal.style.left = "0";
-  eventModal.style.width = "100%";
-  eventModal.style.height = "100%";
-  eventModal.style.backgroundColor = "rgba(0,0,0,0.8)";
-  eventModal.style.display = "none";
-  eventModal.style.justifyContent = "center";
-  eventModal.style.alignItems = "center";
-  eventModal.style.zIndex = "1000";
-
-  const eventContent = document.createElement("div");
-  eventContent.style.backgroundColor = "#fff";
-  eventContent.style.padding = "20px";
-  eventContent.style.border = "3px solid #000";
-  eventContent.style.fontFamily = "'Press Start 2P', cursive";
-  eventContent.style.width = "300px";
-  eventContent.style.position = "relative";
-
-  eventModal.appendChild(eventContent);
-  document.body.appendChild(eventModal);
-
-  const closeEventBtn = document.createElement("button");
-  closeEventBtn.textContent = "Close";
-  closeEventBtn.className = "retro-button";
-  closeEventBtn.style.position = "absolute";
-  closeEventBtn.style.top = "5px";
-  closeEventBtn.style.right = "5px";
-  eventContent.appendChild(closeEventBtn);
-  closeEventBtn.addEventListener("click", () => eventModal.style.display = "none");
-
-  const titleEl = document.createElement("h3");
-  const descEl = document.createElement("p");
-  const dateEl = document.createElement("p");
-  const authorEl = document.createElement("p");
-  const imgEl = document.createElement("img");
-  imgEl.style.maxWidth = "100%";
-  imgEl.style.margin = "5px 0";
-
-  const rsvpBtn = document.createElement("button");
-  rsvpBtn.className = "retro-button";
-
-  eventContent.append(titleEl, descEl, dateEl, authorEl, imgEl, rsvpBtn);
-
-  function openEventModal(evt) {
-    titleEl.textContent = evt.title;
-    descEl.textContent = evt.desc;
-    dateEl.textContent = `Date: ${evt.date}`;
-    authorEl.textContent = `Organizer: ${evt.author}`;
-    imgEl.src = evt.pic || "";
-
-    const isRSVP = currentUser?.savedPosts?.some(r => r.date === evt.date && r.title === evt.title);
-    rsvpBtn.textContent = isRSVP ? "Cancel RSVP" : "RSVP";
-
-    rsvpBtn.onclick = () => {
-      if (!currentUser.savedPosts) currentUser.savedPosts = [];
-      const idx = currentUser.savedPosts.findIndex(r => r.date===evt.date && r.title===evt.title);
-      if (idx !== -1) currentUser.savedPosts.splice(idx, 1);
-      else currentUser.savedPosts.push({ title: evt.title, date: evt.date });
-
-      let users = JSON.parse(localStorage.getItem("users")) || [];
-      const userIdx = users.findIndex(u => u.email===currentUser.email);
-      if (userIdx!==-1) {
-        users[userIdx] = currentUser;
-        localStorage.setItem("users", JSON.stringify(users));
-        localStorage.setItem("currentUser", JSON.stringify(currentUser));
-      }
-
-      eventModal.style.display = "none";
-      renderCalendar(currentMonthOffset);
+    const posts = storage.get(LS_KEYS.POSTS, []);
+    const newPost = {
+      id: safeUUID(),
+      title,
+      body,
+      date,
+      time,
+      type,
+      image: '', // will be set after file load if any
+      createdAt: nowIso(),
     };
 
-    eventModal.style.display = "flex";
-  }
-
-  // --------------------------
-  // Vendor event creation
-  function setupVendorEventCreation() {
-    if (!currentUser || currentUser.role !== "vendor/organizer") return;
-
-    const cal = document.getElementById("calendarGrid");
-
-    const createBtn = document.createElement("button");
-    createBtn.textContent = "Create Event";
-    createBtn.className = "retro-button";
-    createBtn.style.margin = "10px 0";
-    cal.parentNode.insertBefore(createBtn, cal);
-
-    const modal = document.createElement("div");
-    modal.style.position = "fixed";
-    modal.style.top = "0";
-    modal.style.left = "0";
-    modal.style.width = "100%";
-    modal.style.height = "100%";
-    modal.style.backgroundColor = "rgba(0,0,0,0.8)";
-    modal.style.display = "none";
-    modal.style.justifyContent = "center";
-    modal.style.alignItems = "center";
-    modal.style.zIndex = "1000";
-
-    const modalContent = document.createElement("div");
-    modalContent.style.backgroundColor = "#fff";
-    modalContent.style.padding = "20px";
-    modalContent.style.border = "3px solid #000";
-    modalContent.style.fontFamily = "'Press Start 2P', cursive";
-    modalContent.style.width = "300px";
-    modalContent.style.position = "relative";
-
-    modal.appendChild(modalContent);
-    document.body.appendChild(modal);
-
-    const closeBtn = document.createElement("button");
-    closeBtn.textContent = "Close";
-    closeBtn.className = "retro-button";
-    closeBtn.style.position = "absolute";
-    closeBtn.style.top = "5px";
-    closeBtn.style.right = "5px";
-    modalContent.appendChild(closeBtn);
-    closeBtn.addEventListener("click", () => modal.style.display = "none");
-
-    const form = document.createElement("form");
-    form.innerHTML = `
-      <label>Title:</label>
-      <input type="text" id="evtTitle" required>
-      <label>Description:</label>
-      <textarea id="evtDesc" required></textarea>
-      <label>Date:</label>
-      <input type="date" id="evtDate" required>
-      <label>Image URL:</label>
-      <input type="text" id="evtPic">
-      <button class="retro-button">Create Event</button>
-    `;
-    form.style.display = "flex";
-    form.style.flexDirection = "column";
-    form.style.gap = "5px";
-    modalContent.appendChild(form);
-
-    createBtn.addEventListener("click", () => modal.style.display = "flex");
-
-    form.addEventListener("submit", e => {
-      e.preventDefault();
-
-      const title = document.getElementById("evtTitle").value.trim();
-      const desc = document.getElementById("evtDesc").value.trim();
-      const date = document.getElementById("evtDate").value;
-      const pic = document.getElementById("evtPic").value;
-
-      if (!title || !desc || !date) return alert("Fill all required fields.");
-
-      if (!currentUser.posts) currentUser.posts = [];
-      currentUser.posts.push({ title, desc, date, pic });
-
-      let users = JSON.parse(localStorage.getItem("users")) || [];
-      const idx = users.findIndex(u => u.email === currentUser.email);
-      if (idx !== -1) {
-        users[idx] = currentUser;
-        localStorage.setItem("users", JSON.stringify(users));
-        localStorage.setItem("currentUser", JSON.stringify(currentUser));
-      }
-
-      modal.style.display = "none";
-      form.reset();
+    // Handle optional image upload
+    const file = bulletinImage.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        newPost.image = reader.result;
+        posts.push(newPost);
+        storage.set(LS_KEYS.POSTS, posts);
+        newBulletinForm.reset();
+        if (bulletinType) bulletinType.value = '';
+        renderBulletin();
+        renderFullCalendar();
+        renderDashboard();
+        updateNotifications();
+      };
+      reader.readAsDataURL(file);
+    } else {
+      posts.push(newPost);
+      storage.set(LS_KEYS.POSTS, posts);
+      newBulletinForm.reset();
+      if (bulletinType) bulletinType.value = '';
       renderBulletin();
-      renderCalendar(currentMonthOffset);
-    });
+      renderFullCalendar();
+      renderDashboard();
+      updateNotifications();
+    }
   }
 
-  function renderProfile(vendor = null) {
-  const userToShow = vendor || currentUser;
+  function guessType(title) {
+    const t = title.toLowerCase();
+    if (t.includes('market')) return 'market';
+    if (t.includes('swap')) return 'swap';
+    if (t.includes('sale')) return 'sale';
+    return 'event';
+    }
 
-  document.getElementById("profileNameDisplay").textContent = userToShow?.name || "";
-  document.getElementById("profileRoleDisplay").textContent = userToShow?.role || "";
-  document.getElementById("profilePicDisplay").src = userToShow?.profilePic || "https://via.placeholder.com/120";
+  function handleBulletinClick(e) {
+    const btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+    const action = btn.getAttribute('data-action');
+    const id = btn.getAttribute('data-id');
+    const posts = storage.get(LS_KEYS.POSTS, []);
 
-  profileForm.style.display = "none";
-  editProfileBtn.style.display = (currentUser?.role === "vendor/organizer" && !vendor) ? "block" : "none";
+  if (action === 'delete') {
+    const post = posts.find(p => p.id === id);
+    if (!post) return;
+    const ok = confirm(`Delete “${post.title}”?`);
+    if (!ok) return;
 
-  // Display events for the user/vendor
-  const postsGrid = document.getElementById("postsGrid");
-  postsGrid.innerHTML = "<h3>Events</h3>";
-  postsGrid.style.display = "grid";
-  postsGrid.style.gridTemplateColumns = "repeat(auto-fit, minmax(250px, 1fr))";
-  postsGrid.style.gap = "15px";
+    const next = posts.filter(p => p.id !== id);
+    storage.set(LS_KEYS.POSTS, next);
+    cleanupSavedOrphans();
+    renderBulletin(); renderFullCalendar(); renderDashboard(); updateNotifications();
+    return;
+    }
 
-  (userToShow.posts || []).forEach(evt => {
-    const div = document.createElement("div");
-    div.className = "vendor-event-card";
-    div.style.border = "2px solid #000";
-    div.style.borderRadius = "12px";
-    div.style.boxShadow = "0 4px 10px rgba(0,0,0,0.15)";
-    div.style.padding = "10px";
-    div.style.backgroundColor = "#fffceb";
-    div.style.transition = "transform 0.2s, box-shadow 0.2s";
-    div.style.cursor = "pointer";
-    div.style.fontFamily = "'Press Start 2P', cursive";
 
-    // Hover effect
-    div.addEventListener("mouseenter", () => {
-      div.style.transform = "translateY(-4px)";
-      div.style.boxShadow = "0 8px 16px rgba(0,0,0,0.2)";
-    });
-    div.addEventListener("mouseleave", () => {
-      div.style.transform = "translateY(0)";
-      div.style.boxShadow = "0 4px 10px rgba(0,0,0,0.15)";
-    });
+  if (action === 'save') {
+    const stillThere = storage.get(LS_KEYS.POSTS, []).some(p => p.id === id);
+    if (!stillThere) {
+      alert('This post no longer exists!');
+      return;
+    }
 
-    // Event image (if exists)
-    const imgHTML = evt.pic ? `<img src="${evt.pic}" alt="Event Image" style="width:100%; border-radius:8px; margin-bottom:5px;">` : "";
+    toggleSaved(id);
+    const savedNow = isSaved(id);
 
-    div.innerHTML = `
-      ${imgHTML}
-      <h4 style="margin:5px 0; color:#333;">${evt.title}</h4>
-      <p style="color:#555; font-size:0.85em;">${evt.desc}</p>
-      <p style="font-size:0.75em; color:#777;">${evt.date}</p>
-    `;
+    // update button + card inline
+    btn.textContent = savedNow ? 'Saved' : 'Save';
+    btn.setAttribute('aria-pressed', savedNow);
+    btn.setAttribute('aria-label', savedNow ? 'Unsave event' : 'Save event');
 
-    postsGrid.appendChild(div);
-  });
+    const card = btn.closest('.bulletin-card');
+    card?.classList.toggle('is-saved', savedNow);
+
+    const h4 = card?.querySelector('h4');
+    if (h4) {
+      let badge = h4.querySelector('.badge.saved');
+      if (savedNow && !badge) h4.insertAdjacentHTML('beforeend', ' <span class="badge saved">Saved</span>');
+      if (!savedNow && badge) badge.remove();
+    }
+
+    renderDashboard();
+    renderFullCalendar();
+    if (filterSavedOnly?.checked) renderBulletin();
+    return;
+  }
+
+  }
+
+  function openNewBulletinForm() {
+  if (!newBulletinFormContainer) return;
+  newBulletinForm.reset();
+  newBulletinFormContainer.removeAttribute('hidden');
+  toggleNewPostBtn?.setAttribute('aria-expanded', 'true');
+  if (toggleNewPostBtn) toggleNewPostBtn.textContent = 'Close';
+  (bulletinTitle || newBulletinForm.querySelector('input,textarea,select'))?.focus();
 }
 
-  
-  // --------------------------
-  setupVendorEventCreation();
+function closeNewBulletinForm() {
+  if (!newBulletinFormContainer) return;
+  newBulletinForm.reset();
+  newBulletinFormContainer.setAttribute('hidden', '');
+  toggleNewPostBtn?.setAttribute('aria-expanded', 'false');
+  if (toggleNewPostBtn) toggleNewPostBtn.textContent = 'New Post';
+}
 
-  // --------------------------
-  // If already logged in
-  if (currentUser) showView("dashboard");
-});
+function toggleNewBulletin() {
+  if (newBulletinFormContainer?.hasAttribute('hidden')) openNewBulletinForm();
+  else closeNewBulletinForm();
+}
+// Toggle open/close New Post card
+if (toggleNewPostBtn && newBulletinFormContainer) {
+  toggleNewPostBtn.setAttribute('aria-expanded', 'false');
+  toggleNewPostBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    toggleNewBulletin();
+  });
+}
+closeNewBulletinForm();
+
+
+  // -------- CALENDAR --------
+let fc;
+
+function postsToEvents(filter = 'all') {
+  const posts = storage.get(LS_KEYS.POSTS, []);
+  const savedOnly = !!calendarSavedOnly?.checked;
+  const savedSet = new Set(getSavedIds());
+
+  return posts
+    .filter((p) => filter === 'all' || (p.type || 'event') === filter) // fixed
+    .filter((p) => !savedOnly || savedSet.has(p.id))
+    .map((p) => ({
+      id: p.id,
+      title: p.title,
+      start: p.date + (p.time ? `T${p.time}` : ''),
+      allDay: !p.time,
+      extendedProps: {
+        body: p.body || '',
+        image: p.image || '',
+        type: p.type || 'event',
+      },
+    }));
+}
+
+function renderFullCalendar() {
+  const mount = document.getElementById('calendarGrid');
+  if (!mount) return;
+
+  // if already initialized, just refetch with the current filter
+  const filter = document.getElementById('calendarFilter')?.value || 'all';
+
+  if (fc) {
+    fc.getEventSources().forEach(s => s.remove());
+    fc.addEventSource(postsToEvents(filter));
+    fc.render();
+    return;
+  }
+
+  // create a new instance
+  fc = new FullCalendar.Calendar(mount, {
+    initialView: 'dayGridMonth',
+    height: 'auto',
+    selectable: false,
+    headerToolbar: {
+      left: 'prev,next today',
+      center: 'title',
+      right: ''
+    },
+    events: postsToEvents(filter),
+    eventClick(info) {
+      const id = info.event.id;
+      const savedBefore = isSaved(id);
+      const action = savedBefore ? 'Unsave' : 'Save';
+      
+      const doIt = confirm(`${action} this event?`);
+      if (!doIt) return;
+      
+      toggleSaved(id);
+      renderDashboard();
+      renderFullCalendar();
+      
+      alert(`${savedBefore ? 'Removed from' : 'Added to'} Saved Events!`);
+    },
+    eventDidMount(info) {
+      // Add a tiny type badge
+      const type = info.event.extendedProps?.type;
+      if (type) {
+        const badge = document.createElement('span');
+        badge.textContent = type;
+        badge.className = 'fc-type-badge';
+        info.el.querySelector('.fc-event-title')?.appendChild(badge);
+      }
+      if (isSaved(info.event.id)) {
+        info.el.classList.add('fc-saved');
+        const titleEl = info.el.querySelector('.fc-event-title');
+        if (titleEl && !titleEl.querySelector('.save-star')) {
+          const star = document.createElement('span');
+          star.textContent = '★';
+          star.className = 'save-star';
+          star.style.marginLeft = '4px';
+          titleEl.appendChild(star);
+        }
+      }
+    }
+  });
+
+  fc.render();
+}
+  // Call this whenever your nav switches to calendar
+  // In your existing showView('calendarView') logic, add:
+  function onEnterCalendarView() {
+    renderFullCalendar();
+  }
+// If you used my previous nav code, just modify showView:
+const _origShowView = typeof showView === 'function' ? showView : null;
+window.showView = function(viewId) {
+  // call original if it exists
+  if (_origShowView) _origShowView(viewId);
+  else {
+    // minimal fallback visibility toggle
+    document.querySelectorAll('.view').forEach(v => v.hidden = (v.id !== viewId));
+  }
+  if (viewId === 'calendarView') onEnterCalendarView();
+};
+
+// Whenever you add/delete a bulletin post that is an event, refresh calendar:
+function refreshCalendarIfReady() {
+  if (fc) renderFullCalendar();
+}
+
+  // -------- PROFILE --------
+  function renderProfile() {
+    const profile = storage.get(LS_KEYS.PROFILE, {});
+    profileName.textContent = profile.name || 'Name';
+    profileEmail.textContent = profile.email || 'Email';
+    profileBio.textContent = profile.bio || '';
+    profileImage.src = profile.image || 'images/default-profile.png';
+    updateHeaderName();
+  }
+
+  function openEditProfile(){
+    const p = storage.get(LS_KEYS.PROFILE, {});
+    editProfileName.value = p.name || '';
+    editProfileEmail.value = p.email || '';
+    editProfileBio.value = p.bio || '';
+
+    profileEditFormContainer.removeAttribute('hidden');
+    profileCard.setAttribute('hidden','');
+    editProfileButton.setAttribute('aria-expanded','true');
+    editProfileName.focus();
+  }
+
+  function closeEditProfile(){
+    profileEditFormContainer.setAttribute('hidden','');
+    profileCard.removeAttribute('hidden');
+    editProfileButton.setAttribute('aria-expanded','false');
+  }
+
+
+  function handleProfileSubmit(e) {
+    e.preventDefault();
+    const current = storage.get(LS_KEYS.PROFILE, {});
+    const next = {
+      ...current,
+      name: editProfileName.value.trim(),
+      email: editProfileEmail.value.trim(),
+      bio: editProfileBio.value.trim(),
+    };
+
+    const file = editProfileImage.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) { alert('Please choose an image file.'); return; }
+      if (file.size > 2 * 1024 * 1024) { alert('Image must be under 2MB.'); return; }
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        next.image = reader.result;
+        storage.set(LS_KEYS.PROFILE, next);
+        closeEditProfile();
+        renderProfile();
+        renderDashboard();
+      };
+      reader.readAsDataURL(file);
+    } else {
+      storage.set(LS_KEYS.PROFILE, next);
+      closeEditProfile();
+      renderProfile();
+      renderDashboard();
+    }
+  }
+
+  // -------- UTIL --------
+  function fmtDateTime(dateStr, timeStr) {
+    const hasTime = !!timeStr;
+    const dt = new Date(`${dateStr}T${hasTime ? timeStr : '00:00'}`);
+    const date = dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    const time = hasTime ? dt.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : '';
+    return hasTime ? `${date} • ${time}` : date;
+  }
+
+  function escapeHTML(str = '') {
+    return str
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
+
+  // -------- EVENT BINDINGS --------
+  function bindEvents() {
+    // Nav
+    navButtons.forEach((btn) => btn.addEventListener('click', handleNavClick));
+
+    // Bulletin
+    if (newBulletinForm) newBulletinForm.addEventListener('submit', handleBulletinSubmit);
+    if (bulletinPostsContainer) bulletinPostsContainer.addEventListener('click', handleBulletinClick);
+
+    // Calendar
+    if (calendarFilter) calendarFilter.addEventListener('change', renderFullCalendar);
+    if (calendarSavedOnly) calendarSavedOnly.addEventListener('change', renderFullCalendar);
+
+    // Profile
+    if (editProfileButton) editProfileButton.addEventListener('click', openEditProfile);
+    if (cancelEditProfileButton) cancelEditProfileButton.addEventListener('click', closeEditProfile);
+    if (profileEditForm) profileEditForm.addEventListener('submit', handleProfileSubmit);
+
+    // Notifications
+    if (notifBell) notifBell.addEventListener('click', markSeen);
+
+    if (refreshBulletinButton) refreshBulletinButton.addEventListener('click', () => {
+      renderBulletin();
+      renderFullCalendar();
+      renderDashboard();
+      updateNotifications();
+    });
+  }
+
+  // -------- INIT --------
+  function init() {
+    ensureSeeds();
+    cleanupSavedOrphans();
+    bindEvents();
+    updateNotifications();
+    updateHeaderName();
+    const today = new Date().toISOString().split('T')[0];
+    const dateInput = document.getElementById('bulletinDate');
+    if (dateInput) dateInput.min = today;
+    
+    // Default view: Dashboard
+    showView('dashboardView');
+  }
+
+  // Kick it off
+  document.addEventListener('DOMContentLoaded', init);
+})();
