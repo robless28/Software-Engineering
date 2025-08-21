@@ -2,6 +2,11 @@
   const $ = (sel, scope = document) => scope.querySelector(sel);
   const $$ = (sel, scope = document) => Array.from(scope.querySelectorAll(sel));
 
+  const safeUUID = () =>
+  (window.crypto && typeof window.crypto.randomUUID === 'function')
+    ? window.crypto.randomUUID()
+    : 'id-' + Math.random().toString(36).slice(2) + Date.now();
+
   const navButtons = $$('.sidebar-nav .sidebar-item');
   const views = {
     dashboardView: $('#dashboardView'),
@@ -15,6 +20,7 @@
 
   // Dashboard
   const dashboardContent = $('#dashboardContent');
+  const welcomeHeading = $('#welcomeHeading');
 
   // Bulletin
   const bulletinList = $('#bulletinList');
@@ -25,11 +31,17 @@
   const bulletinDate = $('#bulletinDate');
   const bulletinTime = $('#bulletinTime');
   const bulletinImage = $('#bulletinImage');
+  const bulletinType = $('#bulletinType');
+  const newBulletinFormContainer = $('#newBulletinFormContainer'); // you need this
+  const toggleNewPostBtn = $('#toggleNewBulletinForm');
+  const refreshBulletinButton = $('#refreshBulletinButton');
+
 
   // Calendar
   const calendarGrid = $('#calendarGrid');
   const calendarContent = $('#calendarContent');
   const calendarFilter = $('#calendarFilter');
+  const calendarSavedOnly = $('#calendarSavedOnly');
 
   // Profile
   const profileCard = $('.profile-card');
@@ -51,7 +63,28 @@
     POSTS: 'thriftPosts',
     PROFILE: 'thriftProfile',
     LAST_SEEN_TS: 'thriftLastSeen',
+    SAVED: 'thriftSavedEventIds',
   };
+
+  const getSavedIds = () => storage.get(LS_KEYS.SAVED, []);
+  const setSavedIds = (ids) => storage.set(LS_KEYS.SAVED, ids);
+  const isSaved = (id) => getSavedIds().includes(id);
+  const toggleSaved = (id) => {
+  let ids = getSavedIds();
+  ids = ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id];
+  setSavedIds(ids);
+};
+function cleanupSavedOrphans() {
+  const posts = storage.get(LS_KEYS.POSTS, []);
+  const valid = new Set(posts.map(p => p.id));
+  setSavedIds(getSavedIds().filter(id => valid.has(id)));
+}
+
+  function updateHeaderName() {
+  const profile = storage.get(LS_KEYS.PROFILE, {});
+  const name = (profile?.name || '').trim() || 'Name';
+  if (welcomeHeading) welcomeHeading.textContent = `Welcome, ${name}!`;
+}
 
   const nowIso = () => new Date().toISOString();
 
@@ -65,7 +98,11 @@
       }
     },
     set(key, value) {
-      localStorage.setItem(key, JSON.stringify(value));
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch (e) {
+        console.warn(`Failed to set ${key} in localStorage:`, e);
+      }
     },
   };
 
@@ -97,7 +134,7 @@
       ];
       storage.set(LS_KEYS.POSTS, seed);
     }
-
+    
     const profile = storage.get(LS_KEYS.PROFILE, null);
     if (!profile) {
       storage.set(LS_KEYS.PROFILE, {
@@ -144,6 +181,8 @@
     if (viewId === 'bulletinView') renderBulletin();
     if (viewId === 'calendarView') renderFullCalendar();
     if (viewId === 'profileView') renderProfile();
+
+    document.querySelector('.main-content')?.scrollTo({ top: 0, behavior: 'smooth' }); 
   }
 
   function handleNavClick(e) {
@@ -169,14 +208,22 @@
   // -------- DASHBOARD --------
   function renderDashboard() {
     const posts = storage.get(LS_KEYS.POSTS, []);
+    const now = new Date();
+
     const upcoming = posts
-      .filter((p) => new Date(`${p.date}T${p.time || '00:00'}`) >= new Date())
+      .filter((p) => new Date(`${p.date}T${p.time || '00:00'}`) >= now)
       .sort((a, b) => new Date(`${a.date}T${a.time || '00:00'}`) - new Date(`${b.date}T${b.time || '00:00'}`))
       .slice(0, 5);
 
     const recent = [...posts]
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
       .slice(0, 5);
+
+    const savedIds = new Set(getSavedIds());
+    const savedUpcoming = posts
+      .filter((p) => savedIds.has(p.id) && new Date(`${p.date}T${p.time || '00:00'}`) >= now)
+      .sort((a, b) => new Date(`${a.date}T${a.time || '00:00'}`) - new Date(`${b.date}T${b.time || '00:00'}`))
+      .slice(0, 5); 
 
     dashboardContent.innerHTML = `
       <div class="grid two">
@@ -192,12 +239,23 @@
             ${recent.map(postLi).join('') || '<li>No posts yet.</li>'}
           </ul>
         </div>
+        <div class="card">
+          <h3>Saved Upcoming Events</h3>
+          <ul class="list">
+            ${savedUpcoming.map(eventLi).join('') || '<li>No saved events.</li>'}
+          </ul>
+        </div>
       </div>
     `;
   }
 
   function eventLi(p) {
-    const dateStr = fmtDateTime(p.date, p.time);
+    const when = new Date(`${p.date}T${p.time || '00:00'}`);
+    const dateStr = when.toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
     return `<li>
       <strong>${escapeHTML(p.title)}</strong>
       <span class="muted">• ${dateStr} • ${p.type ?? 'event'}</span>
@@ -205,7 +263,11 @@
   }
 
   function postLi(p) {
-    const when = new Date(p.createdAt).toLocaleString();
+    const when = new Date(p.createdAt).toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric', 
+      year: 'numeric',
+    });
     return `<li>
       <strong>${escapeHTML(p.title)}</strong>
       <span class="muted">• posted ${when}</span>
@@ -213,33 +275,56 @@
   }
 
   // -------- BULLETIN --------
+  const filterSavedOnly = $('#filterSavedOnly');
+
+  if (filterSavedOnly) {
+    filterSavedOnly.addEventListener('change', renderBulletin);
+  }
+
   function renderBulletin() {
     const posts = storage.get(LS_KEYS.POSTS, []);
-    // Top “loading” section can be repurposed as quick stats
+    const list = filterSavedOnly?.checked ? posts.filter(p => isSaved(p.id)) : posts;
+
     bulletinList.innerHTML = `
-      <div class="muted">Total posts: ${posts.length}</div>
+      <div class="muted">
+        ${filterSavedOnly?.checked ? 'Saved posts' : 'Total posts'}: ${list.length}
+      </div>
     `;
 
-    bulletinPostsContainer.innerHTML = posts
+    const html = list
       .sort((a, b) => new Date(`${a.date}T${a.time || '00:00'}`) - new Date(`${b.date}T${b.time || '00:00'}`))
       .map(bulletinCard)
       .join('');
+
+    bulletinPostsContainer.innerHTML = html || `
+      <div class="empty">No ${filterSavedOnly?.checked ? 'saved ' : ''}posts yet.</div>
+    `;
   }
 
+
+
   function bulletinCard(p) {
-    const dateStr = fmtDateTime(p.date, p.time);
+    const dateStr = new Date(`${p.date}T${p.time || '00:00'}`).toLocaleDateString(undefined, {
+      month: 'short', day: 'numeric', year: 'numeric',
+    });
     const img = p.image ? `<img class="thumb" src="${p.image}" alt="">` : '';
     const typeBadge = p.type ? `<span class="badge">${p.type}</span>` : '';
+
+    const saved = isSaved(p.id); // boolean
+    const savedBadge = saved ? `<span class="badge saved">Saved</span>` : '';
+
     return `
-      <article class="card bulletin-card" data-id="${p.id}">
+      <article class="card bulletin-card ${saved ? 'is-saved' : ''}" data-id="${p.id}">
         <header class="card-header">
-          <h4>${escapeHTML(p.title)} ${typeBadge}</h4>
+          <h4>${escapeHTML(p.title)} ${typeBadge} ${savedBadge}</h4>
           <div class="muted">${dateStr}</div>
         </header>
         ${img}
         <p>${escapeHTML(p.body)}</p>
         <footer class="card-actions">
-          <button class="button button-outline" data-action="save" data-id="${p.id}">Save</button>
+          <button class="button button-outline" data-action="save" data-id="${p.id}" aria-pressed="${saved}" aria-label="${saved ? 'Unsave event' : 'Save event'}">
+            ${saved ? 'Saved' : 'Save'}
+          </button>
           <button class="button button-danger" data-action="delete" data-id="${p.id}">Delete</button>
         </footer>
       </article>
@@ -253,6 +338,13 @@
     const body = bulletinBody.value.trim();
     const date = bulletinDate.value;
     const time = bulletinTime.value || '00:00';
+    const type  = (bulletinType && bulletinType.value) ? bulletinType.value : guessType(title);
+    
+    const eventDT = new Date(`${date}T${time}`);
+    if (isNaN(eventDT) || eventDT < new Date()) {
+      alert('Please select a valid future date and time.');
+      return;
+    }
 
     if (!title || !body || !date) return;
 
@@ -263,7 +355,7 @@
       body,
       date,
       time,
-      type: guessType(title),
+      type,
       image: '', // will be set after file load if any
       createdAt: nowIso(),
     };
@@ -277,6 +369,7 @@
         posts.push(newPost);
         storage.set(LS_KEYS.POSTS, posts);
         newBulletinForm.reset();
+        if (bulletinType) bulletinType.value = '';
         renderBulletin();
         renderFullCalendar();
         renderDashboard();
@@ -287,6 +380,7 @@
       posts.push(newPost);
       storage.set(LS_KEYS.POSTS, posts);
       newBulletinForm.reset();
+      if (bulletinType) bulletinType.value = '';
       renderBulletin();
       renderFullCalendar();
       renderDashboard();
@@ -309,42 +403,109 @@
     const id = btn.getAttribute('data-id');
     const posts = storage.get(LS_KEYS.POSTS, []);
 
-    if (action === 'delete') {
-      const next = posts.filter((p) => p.id !== id);
-      storage.set(LS_KEYS.POSTS, next);
-      renderBulletin();
-      renderFullCalendar();
-      renderDashboard();
+  if (action === 'delete') {
+    const post = posts.find(p => p.id === id);
+    if (!post) return;
+    const ok = confirm(`Delete “${post.title}”?`);
+    if (!ok) return;
+
+    const next = posts.filter(p => p.id !== id);
+    storage.set(LS_KEYS.POSTS, next);
+    cleanupSavedOrphans();
+    renderBulletin(); renderFullCalendar(); renderDashboard(); updateNotifications();
+    return;
+    }
+
+
+  if (action === 'save') {
+    const stillThere = storage.get(LS_KEYS.POSTS, []).some(p => p.id === id);
+    if (!stillThere) {
+      alert('This post no longer exists!');
       return;
     }
 
-    if (action === 'save') {
-      // Minimal “save” example: add a star on the card
-      const card = btn.closest('.bulletin-card');
-      card?.classList.toggle('saved');
-      btn.textContent = card?.classList.contains('saved') ? 'Saved' : 'Save';
+    toggleSaved(id);
+    const savedNow = isSaved(id);
+
+    // update button + card inline
+    btn.textContent = savedNow ? 'Saved' : 'Save';
+    btn.setAttribute('aria-pressed', savedNow);
+    btn.setAttribute('aria-label', savedNow ? 'Unsave event' : 'Save event');
+
+    const card = btn.closest('.bulletin-card');
+    card?.classList.toggle('is-saved', savedNow);
+
+    const h4 = card?.querySelector('h4');
+    if (h4) {
+      let badge = h4.querySelector('.badge.saved');
+      if (savedNow && !badge) h4.insertAdjacentHTML('beforeend', ' <span class="badge saved">Saved</span>');
+      if (!savedNow && badge) badge.remove();
     }
+
+    renderDashboard();
+    renderFullCalendar();
+    if (filterSavedOnly?.checked) renderBulletin();
+    return;
   }
+
+  }
+
+  function openNewBulletinForm() {
+  if (!newBulletinFormContainer) return;
+  newBulletinForm.reset();
+  newBulletinFormContainer.removeAttribute('hidden');
+  toggleNewPostBtn?.setAttribute('aria-expanded', 'true');
+  if (toggleNewPostBtn) toggleNewPostBtn.textContent = 'Close';
+  (bulletinTitle || newBulletinForm.querySelector('input,textarea,select'))?.focus();
+}
+
+function closeNewBulletinForm() {
+  if (!newBulletinFormContainer) return;
+  newBulletinForm.reset();
+  newBulletinFormContainer.setAttribute('hidden', '');
+  toggleNewPostBtn?.setAttribute('aria-expanded', 'false');
+  if (toggleNewPostBtn) toggleNewPostBtn.textContent = 'New Post';
+}
+
+function toggleNewBulletin() {
+  if (newBulletinFormContainer?.hasAttribute('hidden')) openNewBulletinForm();
+  else closeNewBulletinForm();
+}
+// Toggle open/close New Post card
+if (toggleNewPostBtn && newBulletinFormContainer) {
+  toggleNewPostBtn.setAttribute('aria-expanded', 'false');
+  toggleNewPostBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    toggleNewBulletin();
+  });
+}
+closeNewBulletinForm();
+
 
   // -------- CALENDAR --------
-  let fc;
+let fc;
 
-  function postsToEvents(filter = 'all') {
-    const posts = JSON.parse(localStorage.getItem('thriftPosts') || '[]');
-    return posts
-      .filter((p) => filter === 'all' || (p.type || 'event') === filter)
-      .map((p) => ({
-        id: p.id,
-        title: p.title,
-        start: p.date + (p.time ? `T${p.time}` : ''),
-        allDay: !p.time,
-          extendedProps: {
-            body: p.body || '',
-            image: p.image || '',
-            type: p.type || 'event',
-          },
-        }));
-  }
+function postsToEvents(filter = 'all') {
+  const posts = storage.get(LS_KEYS.POSTS, []);
+  const savedOnly = !!calendarSavedOnly?.checked;
+  const savedSet = new Set(getSavedIds());
+
+  return posts
+    .filter((p) => filter === 'all' || (p.type || 'event') === filter) // fixed
+    .filter((p) => !savedOnly || savedSet.has(p.id))
+    .map((p) => ({
+      id: p.id,
+      title: p.title,
+      start: p.date + (p.time ? `T${p.time}` : ''),
+      allDay: !p.time,
+      extendedProps: {
+        body: p.body || '',
+        image: p.image || '',
+        type: p.type || 'event',
+      },
+    }));
+}
+
 function renderFullCalendar() {
   const mount = document.getElementById('calendarGrid');
   if (!mount) return;
@@ -353,7 +514,7 @@ function renderFullCalendar() {
   const filter = document.getElementById('calendarFilter')?.value || 'all';
 
   if (fc) {
-    fc.removeAllEvents();
+    fc.getEventSources().forEach(s => s.remove());
     fc.addEventSource(postsToEvents(filter));
     fc.render();
     return;
@@ -371,15 +532,18 @@ function renderFullCalendar() {
     },
     events: postsToEvents(filter),
     eventClick(info) {
-      const { title, start, extendedProps } = info.event;
-      const when = start ? start.toLocaleString() : '';
-      const desc = extendedProps?.body || '';
-      const img = extendedProps?.image ? `<div style="margin-top:8px;"><img src="${extendedProps.image}" alt="" style="max-width:100%;border-radius:8px;"></div>` : '';
-      // Simple modal-ish alert (replace with your own modal UI later)
-      const details =
-        `${title}\n${when}\n\n${desc || ''}`.trim();
-      alert(details);
-      // Optional: switch to Bulletin or open a detail drawer here.
+      const id = info.event.id;
+      const savedBefore = isSaved(id);
+      const action = savedBefore ? 'Unsave' : 'Save';
+      
+      const doIt = confirm(`${action} this event?`);
+      if (!doIt) return;
+      
+      toggleSaved(id);
+      renderDashboard();
+      renderFullCalendar();
+      
+      alert(`${savedBefore ? 'Removed from' : 'Added to'} Saved Events!`);
     },
     eventDidMount(info) {
       // Add a tiny type badge
@@ -389,6 +553,17 @@ function renderFullCalendar() {
         badge.textContent = type;
         badge.className = 'fc-type-badge';
         info.el.querySelector('.fc-event-title')?.appendChild(badge);
+      }
+      if (isSaved(info.event.id)) {
+        info.el.classList.add('fc-saved');
+        const titleEl = info.el.querySelector('.fc-event-title');
+        if (titleEl && !titleEl.querySelector('.save-star')) {
+          const star = document.createElement('span');
+          star.textContent = '★';
+          star.className = 'save-star';
+          star.style.marginLeft = '4px';
+          titleEl.appendChild(star);
+        }
       }
     }
   });
@@ -412,11 +587,6 @@ window.showView = function(viewId) {
   if (viewId === 'calendarView') onEnterCalendarView();
 };
 
-// Re-render on filter change
-document.getElementById('calendarFilter')?.addEventListener('change', () => {
-  renderFullCalendar();
-});
-
 // Whenever you add/delete a bulletin post that is an event, refresh calendar:
 function refreshCalendarIfReady() {
   if (fc) renderFullCalendar();
@@ -429,19 +599,27 @@ function refreshCalendarIfReady() {
     profileEmail.textContent = profile.email || 'Email';
     profileBio.textContent = profile.bio || '';
     profileImage.src = profile.image || 'images/default-profile.png';
+    updateHeaderName();
   }
 
-  function openEditProfile() {
-    const profile = storage.get(LS_KEYS.PROFILE, {});
-    editProfileName.value = profile.name || '';
-    editProfileEmail.value = profile.email || '';
-    editProfileBio.value = profile.bio || '';
-    profileEditFormContainer.classList.remove('hidden');
+  function openEditProfile(){
+    const p = storage.get(LS_KEYS.PROFILE, {});
+    editProfileName.value = p.name || '';
+    editProfileEmail.value = p.email || '';
+    editProfileBio.value = p.bio || '';
+
+    profileEditFormContainer.removeAttribute('hidden');
+    profileCard.setAttribute('hidden','');
+    editProfileButton.setAttribute('aria-expanded','true');
+    editProfileName.focus();
   }
 
-  function closeEditProfile() {
-    profileEditFormContainer.classList.add('hidden');
+  function closeEditProfile(){
+    profileEditFormContainer.setAttribute('hidden','');
+    profileCard.removeAttribute('hidden');
+    editProfileButton.setAttribute('aria-expanded','false');
   }
+
 
   function handleProfileSubmit(e) {
     e.preventDefault();
@@ -455,6 +633,9 @@ function refreshCalendarIfReady() {
 
     const file = editProfileImage.files?.[0];
     if (file) {
+      if (!file.type.startsWith('image/')) { alert('Please choose an image file.'); return; }
+      if (file.size > 2 * 1024 * 1024) { alert('Image must be under 2MB.'); return; }
+
       const reader = new FileReader();
       reader.onload = () => {
         next.image = reader.result;
@@ -501,6 +682,7 @@ function refreshCalendarIfReady() {
 
     // Calendar
     if (calendarFilter) calendarFilter.addEventListener('change', renderFullCalendar);
+    if (calendarSavedOnly) calendarSavedOnly.addEventListener('change', renderFullCalendar);
 
     // Profile
     if (editProfileButton) editProfileButton.addEventListener('click', openEditProfile);
@@ -509,14 +691,26 @@ function refreshCalendarIfReady() {
 
     // Notifications
     if (notifBell) notifBell.addEventListener('click', markSeen);
+
+    if (refreshBulletinButton) refreshBulletinButton.addEventListener('click', () => {
+      renderBulletin();
+      renderFullCalendar();
+      renderDashboard();
+      updateNotifications();
+    });
   }
 
   // -------- INIT --------
   function init() {
     ensureSeeds();
+    cleanupSavedOrphans();
     bindEvents();
     updateNotifications();
-
+    updateHeaderName();
+    const today = new Date().toISOString().split('T')[0];
+    const dateInput = document.getElementById('bulletinDate');
+    if (dateInput) dateInput.min = today;
+    
     // Default view: Dashboard
     showView('dashboardView');
   }

@@ -16,7 +16,7 @@
 </head>
 <body>
   <header>
-    <h1>Welcome, name!</h1>
+    <h1 id="welcomeHeading">Welcome!</h1>
   </header>
 
   <!-- Main App -->
@@ -50,13 +50,32 @@
       <!-- Bulletin Board -->
       <section id="bulletinView" class="view" aria-labelledby="bulletin" hidden>
         <h2>Bulletin Board</h2>
+
+        <div class="bulletin-toolbar">
+          <button id="toggleNewBulletinForm" class="button" aria-controls="newBulletinFormContainer">
+            New Post
+          </button>
+          <button id="refreshBulletinButton" class="button">Refresh</button>
+        </div>
+        
         <div id="bulletinList">
           <p>Loading...</p>
         </div>
 
-        <div id="newBulletinFormContainer" class="card">
+        <div id="newBulletinFormContainer" class="card" hidden>
           <h3>Create Bulletin Post</h3>
           <form id="newBulletinForm">
+            <div class="form-row">
+              <label for="bulletinType">Type</label>
+              <select id="bulletinType" required>
+                <option value="" disabled selected>Select type</option>
+                <option value="market">Market</option>
+                <option value="swap">Swap</option>
+                <option value="sale">Sale</option>
+                <option value="event">Event (other)</option>
+              </select>
+            </div>
+
             <div class="form-row">
               <input type="text" id="bulletinTitle" name="title" placeholder="Title" required />
               <textarea id="bulletinBody" name="content" placeholder="Content" required></textarea>
@@ -71,6 +90,11 @@
             <button class="button">Post Bulletin</button>
           </form>
         </div>
+
+        <label class="toggle">
+          <input type="checkbox" id="filterSavedOnly" />
+          Saved only
+        </label>
 
         <div id="bulletinPosts" class="bulletin-list" aria-live="polite"></div>
       </section>
@@ -89,6 +113,12 @@
             <option value="sale">Sales</option>
           </select>
         </div>
+        
+        <label class="toggle" style="margin-left: 10px;">
+          <input type="checkbox" id="calendarSavedOnly" />
+          Saved only
+        </label>
+
         <div id="calendarGrid"></div>
       </section>
 
@@ -106,7 +136,7 @@
           <button id="editProfileButton" class="button">Edit Profile</button>
         </div>
 
-        <div id="profileEditFormContainer" class="card hidden">
+        <div id="profileEditFormContainer" class="card" hidden>
           <h3>Edit Profile</h3>
           <form id="profileEditForm">
             <div class="form-row">
