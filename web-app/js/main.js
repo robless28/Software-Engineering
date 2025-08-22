@@ -1,6 +1,6 @@
 (function () {
   // ---- JSON Server API ----
-const API_BASE = 'http://localhost:3001'; // If Codespaces preview blocks this, use the forwarded 3001 URL from the Ports panel.
+const API_BASE = window.__API_BASE__ || 'https://<your-forwarded-3001-url>';
 
 const api = {
   async getPosts() {
@@ -110,7 +110,7 @@ async function refreshFromAPI() {
   const bulletinList            = $('#bulletinList');
   const bulletinPostsContainer  = $('#bulletinPosts');
   const newBulletinForm         = $('#newBulletinForm');
-  const bulletinTitle           = $('#bulletinTitleInput');
+  const bulletinTitle           = $('#bulletinTitle');
   const bulletinBody            = $('#bulletinBody');
   const bulletinDate            = $('#bulletinDate');
   const bulletinTime            = $('#bulletinTime');
@@ -852,7 +852,15 @@ const toggleRsvp = (id) => {
   // -------- INIT --------
   async function init() {
     ensureSeeds();
-    await refreshFromAPI(); // load initial posts from API
+    try {
+      await refreshFromAPI(); // load initial posts from API
+    } catch (e) {
+      console.error('[INIT] refreshFromAPI failed; falling back to local storage', e);
+      renderBulletin();
+      renderFullCalendar();
+      renderDashboard();
+      updateNotifications();
+    }
 
     cleanupSavedOrphans();
     cleanupRsvpOrphans();
