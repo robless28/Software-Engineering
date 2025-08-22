@@ -116,6 +116,7 @@
 const getRsvpIds = () => storage.get(LS_KEYS.RSVPS, []);
 const setRsvpIds = (ids) => storage.set(LS_KEYS.RSVPS, ids);
 const isRsvped   = (id)  => getRsvpIds().includes(id);
+const eventDate = (p) => new Date(`${p.date}T${p.time || '00:00'}`);
 
 const toggleRsvp = (id) => {
   let ids = getRsvpIds();
@@ -224,8 +225,7 @@ const toggleRsvp = (id) => {
 
     const posts = storage.get(LS_KEYS.POSTS, []);
     const now   = new Date();
-
-    const byDate = (p) => new Date(`${p.date}T${p.time || '00:00'}`);
+    const byDate = eventDate;
 
     const upcoming = posts
       .filter((p) => byDate(p) >= now)
@@ -239,6 +239,12 @@ const toggleRsvp = (id) => {
     const savedIds = new Set(getSavedIds());
     const savedUpcoming = posts
       .filter((p) => savedIds.has(p.id) && byDate(p) >= now)
+      .sort((a, b) => byDate(a) - byDate(b))
+      .slice(0, 5);
+
+    const rsvpIds = new Set(getRsvpIds());
+    const goingSoon = posts
+      .filter((p) => rsvpIds.has(p.id) && byDate(p) >= now)
       .sort((a, b) => byDate(a) - byDate(b))
       .slice(0, 5);
 
@@ -260,6 +266,12 @@ const toggleRsvp = (id) => {
           <h3>Saved Upcoming Events</h3>
           <ul class="list">
             ${savedUpcoming.map(eventLi).join('') || '<li>No saved events.</li>'}
+          </ul>
+        </div>
+        <div class="card">
+          <h3>RSVP'd (Upcoming)</h3>
+          <ul class="list">
+            ${goingSoon.map(eventLi).join('') || '<li>No RSVP\'d events.</li>'}
           </ul>
         </div>
       </div>
@@ -446,6 +458,8 @@ const toggleRsvp = (id) => {
       btn.setAttribute('aria-label', goingNow ? 'Cancel RSVP' : 'RSVP to event');
 
       const card = btn.closest('.bulletin-card');
+      card?.classList.toggle('is-going', goingNow);
+
       const h4 = card?.querySelector('h4');
       const existing = h4?.querySelector('.badge.going');
       if (goingNow && !existing) h4?.insertAdjacentHTML('beforeend', ' <span class="badge going">Going</span>');
@@ -601,6 +615,7 @@ const toggleRsvp = (id) => {
     const posts     = storage.get(LS_KEYS.POSTS, []);
     const savedOnly = !!calendarSavedOnly?.checked;
     const savedSet  = new Set(getSavedIds());
+    const goingSet  = new Set(getRsvpIds());
 
     return posts
       .filter((p) => filter === 'all' || (p.type || 'event') === filter)
@@ -614,6 +629,8 @@ const toggleRsvp = (id) => {
           body : p.body  || '',
           image: p.image || '',
           type : p.type  || 'event',
+          going: goingSet.has(p.id),
+          saved: savedSet.has(p.id),
         },
       }));
   }
@@ -657,23 +674,25 @@ const toggleRsvp = (id) => {
         alert(`${savedBefore ? 'Removed from' : 'Added to'} Saved Events!`);
       },
       eventDidMount(info) {
-        const type = info.event.extendedProps?.type;
-        if (type) {
+        const xp = info.event.extendedProps;
+
+        if (xp?.type) {
           const badge = document.createElement('span');
-          badge.textContent = type;
+          badge.textContent = xp.type;
           badge.className = 'fc-type-badge';
           info.el.querySelector('.fc-event-title')?.appendChild(badge);
         }
-        if (isSaved(info.event.id)) {
-          info.el.classList.add('fc-saved');
+        if (xp?.going) {
+          info.el.classList.add('fc-going');
           const titleEl = info.el.querySelector('.fc-event-title, .fc-sticky');
-          if (titleEl && !titleEl.querySelector('.save-star')) {
-            const star = document.createElement('span');
-            star.textContent = '★';
-            star.className = 'save-star';
-            star.style.marginLeft = '4px';
-            titleEl.appendChild(star);
+          if (titleEl && !titleEl.querySelector('.going-check')) {
+            const check = document.createElement('span');
+            check.textContent = '✓';
+            check.className = 'going-check';
+            check.style.marginLeft = '6px';
+            titleEl.appendChild(check);
           }
+          info.el.title = (info.el.title ? info.el.title + ' • ' : '') + 'RSVP: Going';
         }
       }
     });

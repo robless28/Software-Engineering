@@ -379,3 +379,10 @@ header { padding: 2px 0px; border-bottom: 1px solid var(--border); background: #
   margin-right: 4px;
   fill: currentColor;
 }
+/* dashboard/bulletin */
+.bulletin-card.is-going { outline: 2px solid var(--accent, #2e7d32); }
+.badge.going { background: #2e7d32; color: #fff; }
+
+/* calendar */
+.fc .fc-event.fc-going { border-color: #2e7d32; }
+.fc .fc-event.fc-going .fc-event-main { font-weight: 600; }
