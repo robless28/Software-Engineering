@@ -227,20 +227,6 @@ const toggleRsvp = (id) => {
       ];
       storage.set(LS_KEYS.POSTS, seed);
     }
-
-    const profile = storage.get(LS_KEYS.PROFILE, null);
-    if (!profile) {
-      storage.set(LS_KEYS.PROFILE, {
-        name: 'Name',
-        email: 'email@example.com',
-        bio: 'Tell people about your shop or interests!',
-        image: 'images/default-profile.png',
-      });
-    }
-
-    if (!storage.get(LS_KEYS.LAST_SEEN_TS, null)) {
-      storage.set(LS_KEYS.LAST_SEEN_TS, nowIso());
-    }
   }
 
   // -------- NAVIGATION --------
@@ -471,28 +457,6 @@ const toggleRsvp = (id) => {
     await refreshFromAPI();
     setBulletinFormMode('create');
     closeNewBulletinForm();
-
-    // NEW POST MODE
-    const newPost = {
-      id: safeUUID(),
-      title, body, date, time, type,
-      image: '',
-      createdAt: nowIso(),
-    };
-
-    const file = bulletinImage?.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        newPost.image = reader.result;
-        posts.push(newPost);
-        finalizeBulletinUpdate(posts);
-      };
-      reader.readAsDataURL(file);
-    } else {
-      posts.push(newPost);
-      finalizeBulletinUpdate(posts);
-    }
   }
 
   async function handleBulletinClick(e) {
@@ -661,16 +625,6 @@ const toggleRsvp = (id) => {
       toggleNewPostBtn?.setAttribute('aria-expanded', 'false');
     }
     updateToggleButtonLabel();
-  }
-
-  function finalizeBulletinUpdate(posts) {
-    storage.set(LS_KEYS.POSTS, posts);
-    setBulletinFormMode('create');
-    renderBulletin();
-    renderFullCalendar();
-    renderDashboard();
-    updateNotifications();
-    closeNewBulletinForm();
   }
 
   const cancelBulletinButton = $('#cancelBulletinButton');
