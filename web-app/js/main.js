@@ -1,4 +1,56 @@
 (function () {
+  // ---- JSON Server API ----
+const API_BASE = 'http://localhost:3001'; // If Codespaces preview blocks this, use the forwarded 3001 URL from the Ports panel.
+
+const api = {
+  async getPosts() {
+    const r = await fetch(`${API_BASE}/posts`);
+    if (!r.ok) throw new Error('getPosts failed');
+    return r.json();
+  },
+  async createPost(post) {
+    const r = await fetch(`${API_BASE}/posts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(post),
+    });
+    if (!r.ok) throw new Error('createPost failed');
+    return r.json();
+  },
+  async updatePost(post) {
+    const r = await fetch(`${API_BASE}/posts/${post.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(post),
+    });
+    if (!r.ok) throw new Error('updatePost failed');
+    return r.json();
+  },
+  async deletePost(id) {
+    const r = await fetch(`${API_BASE}/posts/${id}`, { method: 'DELETE' });
+    if (!r.ok) throw new Error('deletePost failed');
+  },
+};
+
+// helper to read file -> dataURL (for images)
+const fileToDataURL = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+// one-stop refresh after API mutations
+async function refreshFromAPI() {
+  const posts = await api.getPosts();
+  storage.set(LS_KEYS.POSTS, posts);      // keep your UI reading from storage
+  renderBulletin();
+  renderFullCalendar();
+  renderDashboard();
+  updateNotifications();
+}
+
   // -------- HELPERS --------
   const $  = (sel, scope = document) => scope.querySelector(sel);
   const $$ = (sel, scope = document) => Array.from(scope.querySelectorAll(sel));
@@ -135,8 +187,22 @@ const toggleRsvp = (id) => {
   }
 
   function ensureSeeds() {
-    const posts = storage.get(LS_KEYS.POSTS, null);
-    if (!posts) {
+    const existingProfile = storage.get(LS_KEYS.PROFILE, null);
+    if (!existingProfile) {
+      storage.set(LS_KEYS.PROFILE, {
+        name: 'Name',
+        email: 'email@example.com',
+        bio: 'Tell people about your shop or interests!',
+        image: 'images/default-profile.png',
+      });
+    }
+
+    if (!storage.get(LS_KEYS.LAST_SEEN_TS, null)) {
+      storage.set(LS_KEYS.LAST_SEEN_TS, nowIso());
+    }
+
+    const existingPosts = storage.get(LS_KEYS.POSTS, null);
+    if (!existingPosts) {
       const seed = [
         {
           id: safeUUID(),
@@ -269,7 +335,7 @@ const toggleRsvp = (id) => {
           </ul>
         </div>
         <div class="card">
-          <h3>RSVP'd (Upcoming)</h3>
+          <h3>RSVP'd</h3>
           <ul class="list">
             ${goingSoon.map(eventLi).join('') || '<li>No RSVP\'d events.</li>'}
           </ul>
@@ -357,7 +423,7 @@ const toggleRsvp = (id) => {
     `;
   }
 
-  function handleBulletinSubmit(e) {
+  async function handleBulletinSubmit(e) {
     e.preventDefault();
 
     const title = bulletinTitle?.value.trim() || '';
@@ -377,26 +443,34 @@ const toggleRsvp = (id) => {
 
     const posts = storage.get(LS_KEYS.POSTS, []);
 
+    let imageDataURL = '';
+    const imgFile = bulletinImage?.files?.[0];
+    if (imgFile) imageDataURL = await fileToDataURL(imgFile);
+
     // EDIT MODE
     if (editingId) {
+      const posts = storage.get(LS_KEYS.POSTS, []);
       const idx = posts.findIndex(p => p.id === editingId);
       if (idx !== -1) {
-        posts[idx] = { ...posts[idx], title, body, date, time, type };
-
-        const file = bulletinImage?.files?.[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = () => {
-            posts[idx].image = reader.result;
-            finalizeBulletinUpdate(posts);
-          };
-          reader.readAsDataURL(file);
-        } else {
-          finalizeBulletinUpdate(posts);
-        }
-        return;
+        const updated = {
+          ...posts[idx],
+          title, body, date, time, type,
+          image: imageDataURL || posts[idx].image || '',
+        };
+        await api.updatePost(updated);
       }
+    } else {
+      const newPost = {
+        id: safeUUID(),
+        title, body, date, time, type,
+        image: imageDataURL,
+        createdAt: nowIso(),
+      };
+      await api.createPost(newPost);
     }
+    await refreshFromAPI();
+    setBulletinFormMode('create');
+    closeNewBulletinForm();
 
     // NEW POST MODE
     const newPost = {
@@ -421,7 +495,7 @@ const toggleRsvp = (id) => {
     }
   }
 
-  function handleBulletinClick(e) {
+  async function handleBulletinClick(e) {
     const btn = e.target.closest('button[data-action]');
     if (!btn) return;
 
@@ -434,11 +508,10 @@ const toggleRsvp = (id) => {
       if (!post) return;
       if (!confirm(`Delete “${post.title}”?`)) return;
 
-      const next = posts.filter(p => p.id !== id);
-      storage.set(LS_KEYS.POSTS, next);
+      await api.deletePost(id);
+      await refreshFromAPI();
       cleanupSavedOrphans();
       cleanupRsvpOrphans();
-      renderBulletin(); renderFullCalendar(); renderDashboard(); updateNotifications();
       return;
     }
 
@@ -823,8 +896,10 @@ const toggleRsvp = (id) => {
   }
 
   // -------- INIT --------
-  function init() {
+  async function init() {
     ensureSeeds();
+    await refreshFromAPI(); // load initial posts from API
+
     cleanupSavedOrphans();
     cleanupRsvpOrphans();
     bindEvents();
@@ -846,6 +921,5 @@ const toggleRsvp = (id) => {
     showView('dashboardView'); // default
     updateToggleButtonLabel();
   }
-
   document.addEventListener('DOMContentLoaded', init);
 })();
