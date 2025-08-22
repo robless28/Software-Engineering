@@ -27,6 +27,7 @@
         <button class="sidebar-item" id="dashboard" data-view="dashboardView" aria-controls="dashboardView" aria-selected="true">Dashboard</button>
         <button class="sidebar-item" id="bulletin" data-view="bulletinView" aria-controls="bulletinView" aria-selected="false">Bulletin</button>
         <button class="sidebar-item" id="calendar" data-view="calendarView" aria-controls="calendarView" aria-selected="false">Calendar</button>
+        <button class="sidebar-item" id="vendors" data-view="vendorsView" aria-controls="vendorsView" aria-selected="false">Vendors</button>
         <button class="sidebar-item" id="profile" data-view="profileView" aria-controls="profileView" aria-selected="false">Profile</button>
       </nav>
       <div class="notification-bell" id="notificationBell" aria-label="Notifications">
@@ -130,6 +131,42 @@
         <div id="calendarGrid"></div>
       </section>
 
+      <!-- Vendors -->
+      <section id="vendorsView" class="view" aria-labelledby="vendors" hidden>
+        <header class="row between"
+          <h2>Vendors</h2>
+          <div class="row-gap">
+            <label class="toggle"> 
+              <input type="checkbox" id="vendorsFollowingOnly" />
+              Following only
+            </label>
+            <button id="refreshVendorsButton" class="button button-outline">Refresh</button>
+            <button id="toggleNewVendorForm" class="button" aria-controls="newVendorFormContainer">New Vendor</button>
+          </div>
+        </header>
+
+        <div id="vendorsList" class="muted"></div>
+        <div id="vendorsContainer" class="cards"></div>
+
+        <div id="newVendorFormContainer" class="card" hidden>
+          <h3 id="vendorFormTitle">Create Vendor</h3>
+          <form id="newVendorForm">
+            <input type="hidden" id="editingVendorId" />
+            <label>Name <input id="vendorName" required /></label>
+            <label>Email <input id="vendorEmail" type="email" /></label>
+            <label>Bio <textarea id="vendorBio"></textarea></label>
+            <label>Products (comma-separated) <input id="vendorProducts" /></label>
+            <label>Instagram <input id="vendorInstagram" placeholder="@handle" /></label>
+            <label>Website <input id="vendorWebsite" type="url" /></label>
+            <label>Image <input id="vendorImage" type="file" accept="image/*" /></label>
+            <div class="row gap">
+              <button id="vendorSubmitButton" class="button" type="submit">Save Vendor</button>
+              <button id="cancelVendorButton" class="button button-outline" type="button">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </section>
+      
       <!-- Profile -->
       <section id="profileView" class="view" aria-labelledby="profile" hidden>
         <h2 id="profileTitle">Profile</h2>

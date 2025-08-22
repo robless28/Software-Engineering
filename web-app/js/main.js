@@ -1,8 +1,58 @@
 (function () {
   // ---- JSON Server API ----
-const API_BASE = window.__API_BASE__ || 'https://<your-forwarded-3001-url>';
+const API_BASE = window.__API_BASE__ || 'http://localhost:3001';
 
 const api = {
+
+  //vendors
+  async getVendors() {
+    const r = await fetch(`${API_BASE}/vendors`);
+    if (!r.ok) throw new Error('getVendors failed');
+    return r.json();
+  },
+  async createVendor(vendor) {
+    const r = await fetch(`${API_BASE}/vendors`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(vendor),
+    });
+    if (!r.ok) throw new Error('createVendor failed');
+    return r.json();
+  },
+  async updateVendor(vendor) {
+    const r = await fetch(`${API_BASE}/vendors/${vendor.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(vendor),
+    });
+    if (!r.ok) throw new Error('updateVendor failed');
+    return r.json();
+  },
+  async deleteVendor(id) {
+    const r = await fetch(`${API_BASE}/vendors/${id}`, { method: 'DELETE' });
+    if (!r.ok) throw new Error('deleteVendor failed');
+  },
+  //follows
+  async getFollows() {
+    const r = await fetch(`${API_BASE}/follows`);
+    if (!r.ok) throw new Error('getFollows failed');
+    return r.json();
+  },
+  async followVendor(vendorId) {
+    const r = await fetch(`${API_BASE}/follows`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: safeUUID(), vendorId }),
+    });
+    if (!r.ok) throw new Error('followVendor failed');
+    return r.json();
+  },
+  async unfollow(id) {
+    const r = await fetch(`${API_BASE}/follows/${id}`, { method: 'DELETE' });
+    if (!r.ok) throw new Error('unfollow failed');
+  },
+
+  // posts
   async getPosts() {
     const r = await fetch(`${API_BASE}/posts`);
     if (!r.ok) throw new Error('getPosts failed');
@@ -87,7 +137,9 @@ async function refreshFromAPI() {
     PROFILE: 'thriftProfile',
     LAST_SEEN_TS: 'thriftLastSeen',
     SAVED: 'thriftSavedEventIds',
-    RSVPS: 'thriftRsvps'
+    RSVPS: 'thriftRsvps',
+    VENDORS: 'thriftVendors',
+    FOLLOWS: 'thriftFollows',
   };
 
   // -------- ELEMENTS --------
@@ -96,6 +148,7 @@ async function refreshFromAPI() {
     dashboardView: $('#dashboardView'),
     bulletinView : $('#bulletinView'),
     calendarView : $('#calendarView'),
+    vendorsView  : $('#vendorsView'),
     profileView  : $('#profileView'),
   };
 
@@ -126,6 +179,24 @@ async function refreshFromAPI() {
   // Calendar
   const calendarFilter     = $('#calendarFilter');
   const calendarSavedOnly  = $('#calendarSavedOnly');
+
+  //Vendors
+  const vendorsList         = $('#vendorsList');
+  const vendorsContainer    = $('#vendorsContainer');
+  const newVendorForm       = $('#newVendorForm');
+  const vendorFormTitle     = $('#vendorFormTitle');
+  const editingVendorId     = $('#editingVendorId');
+  const vendorName          = $('#vendorName');
+  const vendorEmail         = $('#vendorEmail');
+  const vendorBio           = $('#vendorBio');
+  const vendorProducts      = $('#vendorProducts');
+  const vendorInstagram     = $('#vendorInstagram');
+  const vendorWebsite       = $('#vendorWebsite');
+  const vendorImage         = $('#vendorImage');
+  const vendorSubmitButton  = $('#vendorSubmitButton');
+  const toggleNewVendorForm = $('#toggleNewVendorForm');
+  const refreshVendorsButton= $('#refreshVendorsButton');
+  const cancelVendorButton  = $('#cancelVendorButton');
 
   // Profile
   const profileCard               = $('.profile-card');
@@ -244,6 +315,7 @@ const toggleRsvp = (id) => {
     if (viewId === 'dashboardView') renderDashboard();
     if (viewId === 'bulletinView')  renderBulletin();
     if (viewId === 'calendarView')  renderFullCalendar();
+    if (viewId === 'vendorsView')   renderVendors();
     if (viewId === 'profileView')   renderProfile();
 
     document.querySelector('.main-content')?.scrollTo({ top: 0, behavior: 'smooth' });
@@ -650,7 +722,7 @@ const toggleRsvp = (id) => {
       .map((p) => ({
         id: p.id,
         title: p.title,
-        start: `${p.date}T${p.time}`,
+        start: `${p.date}T${p.time || '00:00'}`,
         allDay: false,
         extendedProps: {
           body : p.body  || '',
@@ -726,6 +798,201 @@ const toggleRsvp = (id) => {
 
     fc.render();
   }
+  // -------- VENDORS --------
+  const vendorsFollowingOnly = $('#vendorsFollowingOnly');
+  vendorsFollowingOnly?.addEventListener('change', renderVendors);
+
+newVendorForm?.addEventListener('submit', handleVendorSubmit);
+vendorsContainer?.addEventListener('click', handleVendorsClick);
+refreshVendorsButton?.addEventListener('click', refreshVendorsFromAPI);
+toggleNewVendorForm?.addEventListener('click', (e) => {
+  e.preventDefault();
+  const c = $('#newVendorFormContainer');
+  if (!c) return;
+  const willOpen = c.hasAttribute('hidden');
+  if (willOpen) setVendorFormMode('create'); else closeNewVendorForm();
+});
+cancelVendorButton?.addEventListener('click', () => {
+  setVendorFormMode('create');
+  closeNewVendorForm();
+});
+
+  function openNewVendorForm() {
+  const c = $('#newVendorFormContainer');
+  if (!c || !newVendorForm) return;
+  if (newVendorForm.dataset.mode !== 'edit') newVendorForm.reset();
+  c.removeAttribute('hidden');
+  toggleNewVendorForm?.setAttribute('aria-expanded', 'true');
+  vendorName?.focus();
+}
+function closeNewVendorForm() {
+  const c = $('#newVendorFormContainer');
+  if (!c || !newVendorForm) return;
+  newVendorForm.reset();
+  c.setAttribute('hidden', '');
+  toggleNewVendorForm?.setAttribute('aria-expanded', 'false');
+}
+function setVendorFormMode(mode, vendor = null) {
+  if (!newVendorForm) return;
+  newVendorForm.dataset.mode = mode;
+
+  openNewVendorForm();
+  if (mode === 'edit' && vendor) {
+    vendorFormTitle.textContent = 'Edit Vendor';
+    vendorSubmitButton.textContent = 'Update Vendor';
+    editingVendorId.value = vendor.id;
+    vendorName.value = vendor.name || '';
+    vendorEmail.value = vendor.email || '';
+    vendorBio.value = vendor.bio || '';
+    vendorProducts.value = Array.isArray(vendor.products) ? vendor.products.join(', ') : (vendor.products || '');
+    vendorInstagram.value = vendor.socials?.instagram || '';
+    vendorWebsite.value = vendor.socials?.website || '';
+  } else {
+    vendorFormTitle.textContent = 'Create Vendor';
+    vendorSubmitButton.textContent = 'Save Vendor';
+    editingVendorId.value = '';
+    newVendorForm.reset();
+  }
+}
+
+async function handleVendorSubmit(e) {
+  e.preventDefault();
+  const name  = (vendorName?.value || '').trim();
+  if (!name) return;
+
+  const email = (vendorEmail?.value || '').trim();
+  const bio   = (vendorBio?.value || '').trim();
+  const products = (vendorProducts?.value || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+  const socials = {
+    instagram: (vendorInstagram?.value || '').trim(),
+    website  : (vendorWebsite?.value || '').trim(),
+  };
+
+  let imageDataURL = '';
+  const file = vendorImage?.files?.[0];
+  if (file) imageDataURL = await fileToDataURL(file);
+
+  const editingId = editingVendorId?.value || null;
+
+  if (editingId) {
+    const vendors = storage.get(LS_KEYS.VENDORS, []);
+    const idx = vendors.findIndex(v => v.id === editingId);
+    if (idx !== -1) {
+      const updated = {
+        ...vendors[idx],
+        name, email, bio, products, socials,
+        image: imageDataURL || vendors[idx].image || '',
+      };
+      await api.updateVendor(updated);
+    }
+  } else {
+    const newVendor = {
+      id: safeUUID(),
+      name, email, bio, products, socials,
+      image: imageDataURL,
+      createdAt: nowIso(),
+    };
+    await api.createVendor(newVendor);
+  }
+
+  await refreshVendorsFromAPI();
+  setVendorFormMode('create');
+  closeNewVendorForm();
+}
+
+async function handleVendorsClick(e) {
+  const btn = e.target.closest('button[data-action]');
+  if (!btn) return;
+  const action = btn.getAttribute('data-action');
+  const id = btn.getAttribute('data-id');
+
+  const vendors = storage.get(LS_KEYS.VENDORS, []);
+  const follows = storage.get(LS_KEYS.FOLLOWS, []);
+
+  if (action === 'delete') {
+    const vendor = vendors.find(v => v.id === id);
+    if (!vendor) return;
+    if (!confirm(`Delete “${vendor.name}”?`)) return;
+    await api.deleteVendor(id);
+    await refreshVendorsFromAPI();
+    return;
+  }
+
+  if (action === 'edit') {
+    const vendor = vendors.find(v => v.id === id);
+    if (!vendor) return;
+    setVendorFormMode('edit', vendor);
+    return;
+  }
+
+  if (action === 'follow') {
+    const existing = follows.find(f => f.vendorId === id);
+    if (existing) {
+      await api.unfollow(existing.id);
+    } else {
+      await api.followVendor(id);
+    }
+    await refreshVendorsFromAPI();
+    return;
+  }
+}
+
+  async function refreshVendorsFromAPI() {
+  const [vendors, follows] = await Promise.all([api.getVendors(), api.getFollows()]);
+  storage.set(LS_KEYS.VENDORS, vendors);
+  storage.set(LS_KEYS.FOLLOWS, follows);
+  renderVendors();
+}
+
+function renderVendors() {
+  if (!vendorsContainer || !vendorsList) return;
+  const vendors = storage.get(LS_KEYS.VENDORS, []);
+  const follows = storage.get(LS_KEYS.FOLLOWS, []);
+  const followedSet = new Set(follows.map(f => f.vendorId));
+  const followingOnly = vendorsFollowingOnly?.checked;
+
+  const toShow = vendors.filter(v => !followingOnly || followedSet.has(v.id));
+
+  // show filtered vs total
+  vendorsList.textContent = `Showing ${toShow.length} of ${vendors.length} vendors`;
+
+  vendorsContainer.innerHTML = toShow.map(v => {
+    const isFollowing = followedSet.has(v.id);
+    const products = Array.isArray(v.products) ? v.products.join(', ') : (v.products || '');
+    const img = v.image ? `<img class="thumb" src="${v.image}" alt="">` : '';
+    const ig = (v.socials?.instagram || '').trim();
+    const web = (v.socials?.website || '').trim();
+    const socials = [
+      ig ? `<a href="https://instagram.com/${ig.replace(/^@/, '')}" target="_blank" rel="noopener">Instagram</a>` : '',
+      web ? `<a href="${web}" target="_blank" rel="noopener">Website</a>` : ''
+    ].filter(Boolean).join(' • ');
+
+    return `
+      <article class="card vendor-card" data-id="${v.id}">
+        <header class="card-header">
+          <h4>${escapeHTML(v.name)}</h4>
+          <div class="muted">${escapeHTML(v.email || '')}</div>
+        </header>
+        ${img}
+        <p>${escapeHTML(v.bio || '')}</p>
+        ${products ? `<div class="muted">Products: ${escapeHTML(products)}</div>` : ''}
+        ${socials ? `<div class="muted">${socials}</div>` : ''}
+        <footer class="card-actions">
+          <button class="button" data-action="follow" data-id="${v.id}" aria-pressed="${isFollowing}">
+            ${isFollowing ? 'Following' : 'Follow'}
+          </button>
+          <button class="button" data-action="edit" data-id="${v.id}">Edit</button>
+          <button class="button button-danger" data-action="delete" data-id="${v.id}">Delete</button>
+        </footer>
+      </article>
+    `;
+  }).join('') || `<div class="empty">${followingOnly ? 'You aren’t following any vendors yet.' : 'No vendors yet.'}</div>`;
+}
+
+
 
   // -------- PROFILE --------
   function renderProfile() {
@@ -854,6 +1121,7 @@ const toggleRsvp = (id) => {
     ensureSeeds();
     try {
       await refreshFromAPI(); // load initial posts from API
+      await refreshVendorsFromAPI(); // load initial vendors from API
     } catch (e) {
       console.error('[INIT] refreshFromAPI failed; falling back to local storage', e);
       renderBulletin();
