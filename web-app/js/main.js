@@ -35,6 +35,7 @@
     PROFILE: 'thriftProfile',
     LAST_SEEN_TS: 'thriftLastSeen',
     SAVED: 'thriftSavedEventIds',
+    RSVPS: 'thriftRsvps'
   };
 
   // -------- ELEMENTS --------
@@ -105,6 +106,22 @@
     const valid = new Set(posts.map(p => p.id));
     setSavedIds(getSavedIds().filter(id => valid.has(id)));
   }
+  function cleanupRsvpOrphans() {
+    const posts = storage.get(LS_KEYS.POSTS, []);
+    const valid = new Set(posts.map(p => p.id));
+    setRsvpIds(getRsvpIds().filter(id => valid.has(id)));
+  }
+
+// -------- RSVP HELPERS --------
+const getRsvpIds = () => storage.get(LS_KEYS.RSVPS, []);
+const setRsvpIds = (ids) => storage.set(LS_KEYS.RSVPS, ids);
+const isRsvped   = (id)  => getRsvpIds().includes(id);
+
+const toggleRsvp = (id) => {
+  let ids = getRsvpIds();
+  ids = ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id];
+  setRsvpIds(ids);
+};
 
   // -------- SEED DATA --------
   function isoForDayOffset(offset) {
@@ -295,6 +312,10 @@
   }
 
   function bulletinCard(p) {
+    const going     = isRsvped(p.id);
+    const rsvpBadge = going ? `<span class="badge going">Going</span>` : '';
+    const rsvpBtn   = `<button class="button" data-action="rsvp" data-id="${p.id}" aria-pressed="${going}" aria-label="${going ? 'Cancel RSVP' : 'RSVP to event'}">${going ? 'Going' : 'RSVP'}</button>`;
+
     const dateStr = new Date(`${p.date}T${p.time || '00:00'}`).toLocaleDateString(undefined, {
       month: 'short', day: 'numeric', year: 'numeric',
     });
@@ -313,6 +334,7 @@
         <p>${escapeHTML(p.body)}</p>
 
         <footer class="card-actions">
+          ${rsvpBtn}
           <button class="button button-outline" data-action="save" data-id="${p.id}" aria-pressed="${saved}" aria-label="${saved ? 'Unsave event' : 'Save event'}">
             ${saved ? 'Saved' : 'Save'}
           </button>
@@ -336,9 +358,8 @@
     if (!title || !body || !date) return;
 
     const eventDT = new Date(`${date}T${time}`);
-
-    if (isNaN(eventDT)) {
-      alert('Please select a valid date and time.');
+    if (Number.isNaN(eventDT.getTime())) {
+      alert('Please select a valid date and time.')
       return;
     }
 
@@ -388,20 +409,12 @@
     }
   }
 
-  function guessType(title) {
-    const t = (title || '').toLowerCase();
-    if (t.includes('market')) return 'market';
-    if (t.includes('swap'))   return 'swap';
-    if (t.includes('sale'))   return 'sale';
-    return 'event';
-  }
-
   function handleBulletinClick(e) {
     const btn = e.target.closest('button[data-action]');
     if (!btn) return;
 
     const action = btn.getAttribute('data-action');
-    const id     = btn.getAttribute('data-id');
+    const id = btn.getAttribute('data-id');
     const posts  = storage.get(LS_KEYS.POSTS, []);
 
     if (action === 'delete') {
@@ -412,6 +425,7 @@
       const next = posts.filter(p => p.id !== id);
       storage.set(LS_KEYS.POSTS, next);
       cleanupSavedOrphans();
+      cleanupRsvpOrphans();
       renderBulletin(); renderFullCalendar(); renderDashboard(); updateNotifications();
       return;
     }
@@ -423,33 +437,61 @@
       return;
     }
 
+    if (action === 'rsvp') {
+      toggleRsvp(id);
+      const goingNow = isRsvped(id);
+
+      btn.textContent = goingNow ? 'Going' : 'RSVP';
+      btn.setAttribute('aria-pressed', goingNow);
+      btn.setAttribute('aria-label', goingNow ? 'Cancel RSVP' : 'RSVP to event');
+
+      const card = btn.closest('.bulletin-card');
+      const h4 = card?.querySelector('h4');
+      const existing = h4?.querySelector('.badge.going');
+      if (goingNow && !existing) h4?.insertAdjacentHTML('beforeend', ' <span class="badge going">Going</span>');
+      if (!goingNow && existing) existing.remove();
+
+      renderDashboard();
+      renderFullCalendar();
+      if (filterSavedOnly?.checked) renderBulletin();
+      return;
+    }
+
     if (action === 'save') {
       const stillThere = storage.get(LS_KEYS.POSTS, []).some(p => p.id === id);
       if (!stillThere) { alert('This post no longer exists!'); return; }
+
+      toggleSaved(id);
+      const SavedNow = isSaved(id);
+
+      btn.textContent = SavedNow ? 'Saved' : 'Save';
+      btn.setAttribute('aria-pressed', SavedNow);
+      btn.setAttribute('aria-label', SavedNow ? 'Unsave event' : 'Save event');
+
+      const card = btn.closest('.bulletin-card');
+      card?.classList.toggle('is-saved', SavedNow);
+
+      const h4 = card?.querySelector('h4');
+      if (h4) {
+        const badge = h4.querySelector('.badge.saved');
+        if (SavedNow && !badge) h4.insertAdjacentHTML('beforeend', ' <span class="badge saved">Saved</span>');
+        if (!SavedNow && badge) badge.remove();
+      }
+      renderDashboard();
+      renderFullCalendar();
+      if (filterSavedOnly?.checked) renderBulletin();
+      return;
     }
-
-    toggleSaved(id);
-    const savedNow = isSaved(id);
-
-    // update button + card inline
-    btn.textContent = savedNow ? 'Saved' : 'Save';
-    btn.setAttribute('aria-pressed', savedNow);
-    btn.setAttribute('aria-label', savedNow ? 'Unsave event' : 'Save event');
-
-    const card = btn.closest('.bulletin-card');
-    card?.classList.toggle('is-saved', savedNow);
-
-    const h4 = card?.querySelector('h4');
-    if (h4) {
-      const badge = h4.querySelector('.badge.saved');
-      if (savedNow && !badge) h4.insertAdjacentHTML('beforeend', ' <span class="badge saved">Saved</span>');
-      if (!savedNow && badge) badge.remove();
-    }
-
-    renderDashboard();
-    renderFullCalendar();
-    if (filterSavedOnly?.checked) renderBulletin();
   }
+
+  function guessType(title) {
+    const t = (title || '').toLowerCase();
+    if (t.includes('market')) return 'market';
+    if (t.includes('swap'))   return 'swap';
+    if (t.includes('sale'))   return 'sale';
+    return 'event';
+  }
+
 
   function openNewBulletinForm() {
     if (!newBulletinFormContainer || !newBulletinForm) return;
@@ -577,6 +619,8 @@
   }
 
   function renderFullCalendar() {
+    if (typeof FullCalendar === 'undefined') return;
+    
     const mount = document.getElementById('calendarGrid');
     if (!mount) return;
 
@@ -622,7 +666,7 @@
         }
         if (isSaved(info.event.id)) {
           info.el.classList.add('fc-saved');
-          const titleEl = info.el.querySelector('.fc-event-title');
+          const titleEl = info.el.querySelector('.fc-event-title, .fc-sticky');
           if (titleEl && !titleEl.querySelector('.save-star')) {
             const star = document.createElement('span');
             star.textContent = '★';
@@ -763,15 +807,22 @@
   function init() {
     ensureSeeds();
     cleanupSavedOrphans();
+    cleanupRsvpOrphans();
     bindEvents();
     updateNotifications();
     updateHeaderName();
 
     console.log('[INIT] App loaded');
 
-    const today = new Date().toISOString().split('T')[0];
+    const todayLocal = (() => {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    })();
     const dateInput = document.getElementById('bulletinDate');
-    if (dateInput) dateInput.min = today;
+    if (dateInput) dateInput.min = todayLocal;
 
     showView('dashboardView'); // default
     updateToggleButtonLabel();
