@@ -1,58 +1,8 @@
 (function () {
   // ---- JSON Server API ----
-const API_BASE = window.__API_BASE__ || 'http://localhost:3001';
+const API_BASE = 'http://localhost:3001'; // If Codespaces preview blocks this, use the forwarded 3001 URL from the Ports panel.
 
 const api = {
-
-  //vendors
-  async getVendors() {
-    const r = await fetch(`${API_BASE}/vendors`);
-    if (!r.ok) throw new Error('getVendors failed');
-    return r.json();
-  },
-  async createVendor(vendor) {
-    const r = await fetch(`${API_BASE}/vendors`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(vendor),
-    });
-    if (!r.ok) throw new Error('createVendor failed');
-    return r.json();
-  },
-  async updateVendor(vendor) {
-    const r = await fetch(`${API_BASE}/vendors/${vendor.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(vendor),
-    });
-    if (!r.ok) throw new Error('updateVendor failed');
-    return r.json();
-  },
-  async deleteVendor(id) {
-    const r = await fetch(`${API_BASE}/vendors/${id}`, { method: 'DELETE' });
-    if (!r.ok) throw new Error('deleteVendor failed');
-  },
-  //follows
-  async getFollows() {
-    const r = await fetch(`${API_BASE}/follows`);
-    if (!r.ok) throw new Error('getFollows failed');
-    return r.json();
-  },
-  async followVendor(vendorId) {
-    const r = await fetch(`${API_BASE}/follows`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: safeUUID(), vendorId }),
-    });
-    if (!r.ok) throw new Error('followVendor failed');
-    return r.json();
-  },
-  async unfollow(id) {
-    const r = await fetch(`${API_BASE}/follows/${id}`, { method: 'DELETE' });
-    if (!r.ok) throw new Error('unfollow failed');
-  },
-
-  // posts
   async getPosts() {
     const r = await fetch(`${API_BASE}/posts`);
     if (!r.ok) throw new Error('getPosts failed');
@@ -258,22 +208,8 @@ const toggleRsvp = (id) => {
   }
 
   function ensureSeeds() {
-    const existingProfile = storage.get(LS_KEYS.PROFILE, null);
-    if (!existingProfile) {
-      storage.set(LS_KEYS.PROFILE, {
-        name: 'Name',
-        email: 'email@example.com',
-        bio: 'Tell people about your shop or interests!',
-        image: 'images/default-profile.png',
-      });
-    }
-
-    if (!storage.get(LS_KEYS.LAST_SEEN_TS, null)) {
-      storage.set(LS_KEYS.LAST_SEEN_TS, nowIso());
-    }
-
-    const existingPosts = storage.get(LS_KEYS.POSTS, null);
-    if (!existingPosts) {
+    const posts = storage.get(LS_KEYS.POSTS, null);
+    if (!posts) {
       const seed = [
         {
           id: safeUUID(),
@@ -393,7 +329,7 @@ const toggleRsvp = (id) => {
           </ul>
         </div>
         <div class="card">
-          <h3>RSVP'd</h3>
+          <h3>RSVP'd (Upcoming)</h3>
           <ul class="list">
             ${goingSoon.map(eventLi).join('') || '<li>No RSVP\'d events.</li>'}
           </ul>
@@ -481,7 +417,7 @@ const toggleRsvp = (id) => {
     `;
   }
 
-  async function handleBulletinSubmit(e) {
+  function handleBulletinSubmit(e) {
     e.preventDefault();
 
     const title = bulletinTitle?.value.trim() || '';
@@ -501,13 +437,8 @@ const toggleRsvp = (id) => {
 
     const posts = storage.get(LS_KEYS.POSTS, []);
 
-    let imageDataURL = '';
-    const imgFile = bulletinImage?.files?.[0];
-    if (imgFile) imageDataURL = await fileToDataURL(imgFile);
-
     // EDIT MODE
     if (editingId) {
-      const posts = storage.get(LS_KEYS.POSTS, []);
       const idx = posts.findIndex(p => p.id === editingId);
       if (idx !== -1) {
         const updated = {
@@ -529,9 +460,31 @@ const toggleRsvp = (id) => {
     await refreshFromAPI();
     setBulletinFormMode('create');
     closeNewBulletinForm();
+
+    // NEW POST MODE
+    const newPost = {
+      id: safeUUID(),
+      title, body, date, time, type,
+      image: '',
+      createdAt: nowIso(),
+    };
+
+    const file = bulletinImage?.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        newPost.image = reader.result;
+        posts.push(newPost);
+        finalizeBulletinUpdate(posts);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      posts.push(newPost);
+      finalizeBulletinUpdate(posts);
+    }
   }
 
-  async function handleBulletinClick(e) {
+  function handleBulletinClick(e) {
     const btn = e.target.closest('button[data-action]');
     if (!btn) return;
 
@@ -544,10 +497,11 @@ const toggleRsvp = (id) => {
       if (!post) return;
       if (!confirm(`Delete “${post.title}”?`)) return;
 
-      await api.deletePost(id);
-      await refreshFromAPI();
+      const next = posts.filter(p => p.id !== id);
+      storage.set(LS_KEYS.POSTS, next);
       cleanupSavedOrphans();
       cleanupRsvpOrphans();
+      renderBulletin(); renderFullCalendar(); renderDashboard(); updateNotifications();
       return;
     }
 
@@ -1117,18 +1071,9 @@ function renderVendors() {
   }
 
   // -------- INIT --------
-  async function init() {
+  function init() {
     ensureSeeds();
-    try {
-      await refreshFromAPI(); // load initial posts from API
-      await refreshVendorsFromAPI(); // load initial vendors from API
-    } catch (e) {
-      console.error('[INIT] refreshFromAPI failed; falling back to local storage', e);
-      renderBulletin();
-      renderFullCalendar();
-      renderDashboard();
-      updateNotifications();
-    }
+    await refreshFromAPI(); // load initial posts from API
 
     cleanupSavedOrphans();
     cleanupRsvpOrphans();
@@ -1151,5 +1096,6 @@ function renderVendors() {
     showView('dashboardView'); // default
     updateToggleButtonLabel();
   }
+
   document.addEventListener('DOMContentLoaded', init);
 })();
