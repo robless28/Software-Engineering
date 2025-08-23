@@ -43,21 +43,23 @@
             <h1 id="welcomeHeading">Welcome!</h1>
           </header>
         <h2>Dashboard</h2>
-        <p>Welcome to your dashboard!</p>
-        <div id="dashboardContent">
-          <p>Loading...</p>
+        <p class="muted">Your activity summary at a glance</p>
+        <div id="dashboardContent" class="grid two"></div>
+        <div id="dashboardRecent" class="card" style="margin-top: 20px;">
+          <h3>Recent Activity</h3>
+          <ul id="recentActivity" class="list"></ul>
         </div>
       </section>
 
       <!-- Bulletin Board -->
-      <section id="bulletinView" class="view" aria-labelledby="bulletin" hidden>
+      <section id="bulletinView" class="view" aria-labelledby="bulletin">
         <h2>Bulletin Board</h2>
 
           <div class="bulletin-toolbar">
             <div class="bulletin-search">
               <input type="text" id="bulletinSearch" class="search-bar" placeholder="Search events..." aria-label="Search events" />
             </div>
-            <button id="toggleNewBulletinForm" class="button" aria-controls="newBulletinFormContainer">
+            <button id="toggleNewBulletinForm" class="button" aria-controls="newBulletinFormContainer" hidden>
               <span class="icon" aria-hidden="true">
                 <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
               </span>
@@ -66,11 +68,14 @@
             <button id="refreshBulletinButton" class="button">Refresh</button>
           </div>
         
-        <div id="bulletinList">
-          <p>Loading...</p>
-        </div>
+        <select id="bulletinSort">
+          <option value="newest">Newest</option>
+          <option value="oldest">Oldest</option>
+          <option value="dateAsc">Event Date ↑</option>
+          <option value="dateDesc">Event Date ↓</option>
+        </select>
 
-        <div id="newBulletinFormContainer" class="card" hidden>
+        <div id="newBulletinFormContainer" class="card">
           <h3 id="bulletinFormTitle">Create Bulletin Post</h3>
           <form id="newBulletinForm">
             <input type="hidden" id="editingPostId" />
@@ -97,6 +102,7 @@
               <input type="file" id="bulletinImage" accept="image/*" />
             </div>
             <button class="button" id="bulletinSubmitButton">Post Bulletin</button>
+            <button class="button" id="cancelBulletinButton">Cancel</button>
           </form>
         </div>
 
@@ -109,7 +115,7 @@
       </section>
 
       <!-- Calendar -->
-      <section id="calendarView" class="view" aria-labelledby="calendar" hidden>
+      <section id="calendarView" class="view" aria-labelledby="calendar">
         <h2>Calendar</h2>
         <div id="calendarContent"></div>
 
@@ -132,8 +138,8 @@
       </section>
 
       <!-- Vendors -->
-      <section id="vendorsView" class="view" aria-labelledby="vendors" hidden>
-        <header class="row between"
+      <section id="vendorsView" class="view" aria-labelledby="vendors">
+        <header class="row between">
           <h2>Vendors</h2>
           <div class="row-gap">
             <label class="toggle"> 
@@ -148,7 +154,7 @@
         <div id="vendorsList" class="muted"></div>
         <div id="vendorsContainer" class="cards"></div>
 
-        <div id="newVendorFormContainer" class="card" hidden>
+        <div id="newVendorFormContainer" class="card">
           <h3 id="vendorFormTitle">Create Vendor</h3>
           <form id="newVendorForm">
             <input type="hidden" id="editingVendorId" />
@@ -168,7 +174,7 @@
       </section>
       
       <!-- Profile -->
-      <section id="profileView" class="view" aria-labelledby="profile" hidden>
+      <section id="profileView" class="view" aria-labelledby="profile">
         <h2 id="profileTitle">Profile</h2>
 
         <div class="profile-card">
@@ -181,7 +187,7 @@
           <button id="editProfileButton" class="button">Edit Profile</button>
         </div>
 
-        <div id="profileEditFormContainer" class="card" hidden>
+        <div id="profileEditFormContainer" class="card">
           <h3>Edit Profile</h3>
           <form id="profileEditForm">
             <div class="form-row">

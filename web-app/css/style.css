@@ -216,6 +216,46 @@ input:focus, select:focus, textarea:focus {
   padding: 16px; border: 1px dashed var(--border);
   border-radius: var(--radius); background: #fafafa; color: var(--muted);
 }
+/* Make bulletin-posts match .card style */
+.bulletin-post {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+
+.bulletin-post h3 {
+  margin-top: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.bulletin-post img {
+  margin-top: 10px;
+  border-radius: var(--radius-sm);
+  max-height: 200px;
+  object-fit: cover;
+}
+
+.bulletin-post .card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.card-actions button {
+  flex: 1 1 auto;   /* buttons share space */
+  min-width: 100px; /* consistent sizing */
+}
+
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 
 /* ===========================
    Badges (Generic + Variants)
